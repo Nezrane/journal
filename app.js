@@ -1,6 +1,6 @@
 /**
  * ╔══════════════════════════════════════════════════════════════════╗
- * ║  KOLTYN OS — app.js                                             ║
+ * ║  KOLTYN Journal — app.js                                             ║
  * ║  Router + shared utilities                                       ║
  * ║                                                                  ║
  * ║  HOW THE ROUTER WORKS:                                           ║
@@ -41,7 +41,7 @@ window.registerPage = function(name, fn) {
 /* ══════════════════════════════════════════════════════════════════
    ROUTER
 ════════════════════════════════════════════════════════════════ */
-const VALID_PAGES = ['dashboard', 'nutrition', 'workout', 'business', 'wealth', 'creative', 'vision'];
+const VALID_PAGES = ['dashboard', 'nutrition', 'workout', 'business', 'wealth', 'creative'];
 
 /**
  * Navigate to a page.

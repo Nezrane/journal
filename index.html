@@ -5,13 +5,12 @@
   ║  Personal Life Operating System                                  ║
   ║                                                                  ║
   ║  6 Pages:                                                        ║
-  ║    Dashboard   — Daily overview & morning routine               ║
+  ║    Dashboard   — Daily overview, morning routine & vision board ║
   ║    Nutrition   — Macro planning (bulk / maintain / cut)         ║
   ║    Workout     — PPL split, recovery + ramping phases           ║
   ║    Business    — Envosta 9-stage framework & priorities         ║
-  ║    Wealth      — MRR tracking, investments, income streams      ║
+  ║    Wealth      — Net worth tracker, investments, income streams ║
   ║    Creative    — Songs, setlists, guitar practice log           ║
-  ║    Vision      — Life areas: dream big / 1yr / 90 day          ║
   ║                                                                  ║
   ║  Files:                                                          ║
   ║    index.html         ← You are here (nav + page shells)        ║
@@ -127,11 +126,6 @@
         <span class="nav-label">Creative</span>
       </a>
 
-      <a class="nav-item" data-page="vision" href="#vision">
-        <span class="nav-icon">◎</span>
-        <span class="nav-label">Vision</span>
-      </a>
-
     </div>
 
     <!-- Current goal pinned at bottom of sidebar -->
@@ -226,11 +220,6 @@
       <div class="page-inner" id="creative-inner"></div>
     </section>
 
-    <!-- ── VISION PAGE ────────────────────────── -->
-    <section class="page" id="page-vision" data-accent="vision">
-      <div class="page-inner" id="vision-inner"></div>
-    </section>
-
   </main><!-- /main-content -->
 
   <!-- Load shared utilities first, then each page module -->
@@ -241,7 +230,6 @@
   <script src="business/page.js"></script>
   <script src="wealth/page.js"></script>
   <script src="creative/page.js"></script>
-  <script src="vision/page.js"></script>
 
   <!-- ── Service Worker Registration ──
        Registers sw.js which caches all app files for offline use.

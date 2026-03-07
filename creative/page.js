@@ -2,6 +2,9 @@
  * KOLTYN OS — creative/page.js
  * Songs, setlists, guitar practice log, songwriting notes.
  * Country-style acoustic — bar performances.
+ *
+ * NOTE: This is the last page module loaded. The boot() call at the
+ * bottom navigates to the correct page once all modules are registered.
  */
 
 window.registerPage('creative', function initCreative() {
@@ -225,3 +228,13 @@ window.registerPage('creative', function initCreative() {
 
   renderSongs();
 });
+
+/*
+ * BOOT — all page modules are now registered.
+ * Read the URL hash and navigate to the right page (or dashboard by default).
+ */
+(function boot() {
+  const hash  = window.location.hash.replace('#', '');
+  const valid = ['dashboard','nutrition','workout','business','wealth','creative'];
+  navigateTo(valid.includes(hash) ? hash : 'dashboard');
+})();
