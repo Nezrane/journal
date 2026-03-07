@@ -1748,3 +1748,39 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
   .day-tabs { gap: 4px; }
   .day-tab  { padding: 7px 12px; font-size: 11px; }
 }
+
+
+/* ══════════════════════════════════════════════════════════════════
+   22. PWA / iOS SAFE AREA INSETS
+   env(safe-area-inset-*) accounts for iPhone notch, Dynamic Island,
+   and the home indicator bar at the bottom. Without this, content
+   or the bottom nav bar can be clipped by the device chrome.
+════════════════════════════════════════════════════════════════ */
+
+/* Bottom tab bar on mobile — lift above home indicator */
+@media (max-width: 768px) {
+  .sidebar {
+    /* Add safe-area padding so the home indicator bar doesn't overlap */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    height: calc(60px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .main-content {
+    height: calc(100vh - 60px - env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Page scrollable area — avoid content hiding behind notch on landscape */
+.page {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Sidebar on desktop — top safe area for notch in landscape */
+@media (min-width: 769px) {
+  .sidebar {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .main-content {
+    margin-top: env(safe-area-inset-top, 0px);
+  }
+}

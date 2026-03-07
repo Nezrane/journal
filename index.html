@@ -28,11 +28,44 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Koltyn OS</title>
+
+  <!-- ── PWA Manifest ── -->
+  <link rel="manifest" href="manifest.json" />
+
+  <!-- ── Theme colour — controls browser chrome on Android ── -->
+  <meta name="theme-color" content="#0b0f14" />
+
+  <!-- ── iOS / Safari PWA meta tags ──
+       These are required for "Add to Home Screen" on iPhone/iPad to behave
+       like a native app (no Safari address bar, full screen, custom icon).
+  -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Koltyn OS" />
+
+  <!-- Apple touch icons — iOS picks the closest size -->
+  <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512.png" />
+
+  <!-- Fallback icon for other browsers -->
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png" />
+
+  <!-- ── iOS safe area insets ──
+       padding-bottom: env(safe-area-inset-bottom) in CSS handles the
+       iPhone home indicator so nothing hides behind it.
+  -->
+  <style>
+    /* Applied immediately before style.css loads to prevent flash */
+    html { background: #0b0f14; }
+  </style>
+
   <!--
     Fonts: Rajdhani (display/headings) + DM Sans (body)
-    Cached by browser after first online load. System fallbacks in CSS.
+    Service worker caches these after first online load.
   -->
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
@@ -209,6 +242,21 @@
   <script src="wealth/page.js"></script>
   <script src="creative/page.js"></script>
   <script src="vision/page.js"></script>
+
+  <!-- ── Service Worker Registration ──
+       Registers sw.js which caches all app files for offline use.
+       'navigator.serviceWorker' check ensures graceful fallback on
+       browsers that don't support PWA (rare but safe practice).
+  -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('[SW] Registered, scope:', reg.scope))
+          .catch(err => console.warn('[SW] Registration failed:', err));
+      });
+    }
+  </script>
 
 </body>
 </html>
