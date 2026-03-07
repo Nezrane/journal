@@ -5,18 +5,10 @@
 
 window.registerPage('dashboard', function initDashboard() {
 
-  const MORNING_HABITS = [
-    'Wake up before 9am',
-    'Rinse mouth + drink water / tea',
-    '15 minutes of sunlight',
-    'Review Daily Journal',
-    'Review Investments (crypto, stocks)',
-    'Check emails & messages',
-    'Quick stretch & maintenance (10 pull-ups, 30 push-ups, 30s L-sit, hip + shoulder + hamstring stretch)',
-    'Eat Meal 1 (Breakfast)',
-    '2 hours focused work on Envosta',
-    '1 hour workout',
-  ];
+  /* ── Data from data.js ── */
+  const MORNING_HABITS = APP_DATA.dashboard.morningHabits;
+  const DAILY_STATS    = APP_DATA.dashboard.stats;
+  const VISION_AREAS   = APP_DATA.vision.areas;
 
   const QUICK_NAV = [
     { page:'nutrition', icon:'◈', label:'Nutrition',  color:'#3ddc6e' },
@@ -24,58 +16,6 @@ window.registerPage('dashboard', function initDashboard() {
     { page:'business',  icon:'◧', label:'Business',   color:'#7c6af7' },
     { page:'wealth',    icon:'◈', label:'Wealth',     color:'#f5c842' },
     { page:'creative',  icon:'♫', label:'Creative',   color:'#f06292' },
-  ];
-
-  const DAILY_STATS = [
-    { label:'Body Weight', value:'176', unit:'lbs',  note:'Goal: 200 lbs' },
-    { label:'Body Fat',    value:'16',  unit:'%',    note:'Goal: 15%' },
-    { label:'Envosta MRR', value:'$0',  unit:'',     note:'Goal: $50K/mo' },
-    { label:'Songs Ready', value:'8',   unit:'',     note:'Setlist: 7 songs' },
-  ];
-
-  const VISION_AREAS = [
-    {
-      icon:'💼', name:'Career & Business',
-      dream:  ['Envosta is a $50K MRR SaaS company running mostly without me','Known as the founder who built something real from scratch','Multiple successful ventures — not just one'],
-      oneYear:['Envosta at $10K MRR (Stage 1 graduation)','First 50 paying customers','Repeatable sales process in place'],
-      focus:  ['Build and ship v1 of Envosta','Talk to 10 target users','Close first 3 paying customers manually']
-    },
-    {
-      icon:'💰', name:'Finance & Wealth',
-      dream:  ['Financially free — money works for me, not the other way','Index fund portfolio generating meaningful passive income','Never worry about money again — abundance mindset fully embodied'],
-      oneYear:['Envosta paying all personal expenses','Consistent monthly investment into index funds','Emergency fund fully stocked (6 months expenses)'],
-      focus:  ['Separate business and personal finances','Set up automatic index fund DCA','Track MRR and net worth weekly']
-    },
-    {
-      icon:'💪', name:'Health & Fitness',
-      dream:  ['200 lbs, 15% body fat — athletic, powerful, lean','Press to handstand and muscle up achieved','Feel the best I\'ve ever felt — energy, strength, mobility'],
-      oneYear:['190 lbs, 16% body fat — clear visual progress','Handstand holds for 10 seconds','Consistent Jeff Nippard PPL — no missed weeks'],
-      focus:  ['Current: 176 lbs, 16% BF — add clean bulk calories','Complete full Recovery Phase (Weeks 1–5) with no skipped sessions','Nail morning routine: stretch + 10 pull-ups + 30 push-ups daily']
-    },
-    {
-      icon:'❤️', name:'Relationships & Family',
-      dream:  ['Deep, authentic relationships — a small circle of people who truly know me','The kind of partner you don\'t settle for — when it\'s right it\'s obvious','Strong family bonds — present and intentional'],
-      oneYear:['Invest in existing friendships deliberately — plan something quarterly','Be fully present when with family — phone down, eyes up','Know what I actually value in a partner (write it out)'],
-      focus:  ['Schedule one intentional social thing per week','Call family member each week','Be more present — notice when I\'m distracted and course-correct']
-    },
-    {
-      icon:'🧠', name:'Personal Growth',
-      dream:  ['Think clearly, decide quickly, execute consistently — uncommon self-mastery','Identity: builder, performer, athlete — not just one thing','Read 50+ books — ideas compound just like money'],
-      oneYear:['Read 12 books — one per month','Daily journalling habit — 5 min minimum','Meditation practice — 10 min daily'],
-      focus:  ['Morning review: journal + vision review + priorities for the day','Read 15 pages before bed every night','Write down 3 things I\'m grateful for each morning']
-    },
-    {
-      icon:'🎸', name:'Music & Creativity',
-      dream:  ['Original songs that make people feel something real','Known locally as the guy worth watching — packed rooms','Album recorded — even if just for me'],
-      oneYear:['10 songs ready to perform — covers + originals','5 original songs with demos recorded','Regular bar gig rotation — monthly at minimum'],
-      focus:  ['Daily practice: 30 min minimum — fingerpicking + vocals + writing','Add one new song to setlist per month','Record a voice memo demo of "Rodeo Bones" this month']
-    },
-    {
-      icon:'✈️', name:'Lifestyle & Adventure',
-      dream:  ['Surf good waves in multiple countries — Indo, Portugal, Central America','Horses as part of life — riding regularly, maybe own one day','Motorcycle trip across a country — no plan, just ride'],
-      oneYear:['One surf trip — even a domestic one counts','Ride a horse at least once','Plan the motorcycle route even if not executing yet'],
-      focus:  ['Research one surf destination — cost, season, flights','Find a local spot to ride horses — one session this quarter','Take the motorcycle out more — rides, not just errands']
-    }
   ];
 
   /* ── Build HTML ── */
@@ -121,12 +61,7 @@ window.registerPage('dashboard', function initDashboard() {
         <div class="card">
           <div class="card-header"><div class="card-title">Today's Focus</div></div>
           <div class="card-body">
-            ${[
-              ['🏗️ Business', 'Build Envosta — talk to users, ship something'],
-              ['💪 Workout',  'Recovery Phase — check workout page for today\'s day'],
-              ['🎸 Creative', '30 min practice — fingerpicking + vocals'],
-              ['📚 Growth',   '15 pages before bed'],
-            ].map(([t,d])=>`
+            ${APP_DATA.dashboard.todaysFocus.map(({title:t,detail:d})=>`
               <div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
                 <div style="font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;color:var(--accent);margin-bottom:2px">${t}</div>
                 <div style="font-size:12px;color:rgba(226,234,242,0.72)">${d}</div>

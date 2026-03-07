@@ -9,63 +9,18 @@
 
 window.registerPage('creative', function initCreative() {
 
-  /* ── Song library ── */
-  const SONGS = [
-    /* Covers — Ready */
-    { title:'Wagon Wheel',            artist:'Old Crow Medicine Show / Darius Rucker', key:'G', status:'ready',    tags:['Crowd Favourite','Opener','Easy Sing-Along'] },
-    { title:'Take Me Home, Country Roads', artist:'John Denver',                      key:'G', status:'ready',    tags:['Crowd Favourite','Closer','High Energy'] },
-    { title:'Friends in Low Places',  artist:'Garth Brooks',                           key:'Bb',status:'ready',    tags:['Bar Classic','Singalong'] },
-    { title:'The House That Built Me', artist:'Miranda Lambert',                       key:'C', status:'ready',    tags:['Emotional','Mid-Set'] },
-    { title:'Chicken Fried',          artist:'Zac Brown Band',                         key:'G', status:'ready',    tags:['Feel Good','Mid-Set'] },
-    { title:'Tennessee Whiskey',      artist:'Chris Stapleton',                        key:'A', status:'ready',    tags:['Show Stopper','Smooth'] },
-    { title:'Fast Car',               artist:'Tracy Chapman',                          key:'C', status:'ready',    tags:['Crossover','Quiet Moment'] },
-    { title:'Jolene',                 artist:'Dolly Parton',                           key:'Dm',status:'ready',    tags:['Classic','Emotional'] },
-    /* Covers — Learning */
-    { title:'Whiskey Glasses',        artist:'Morgan Wallen',                          key:'C', status:'learning', tags:['Modern Country','Up-Beat'] },
-    { title:'Buy Dirt',               artist:'Jordan Davis',                           key:'G', status:'learning', tags:['Modern Country','Story'] },
-    { title:'Seven Bridges Road',     artist:'Eagles',                                 key:'D', status:'learning', tags:['A Cappella Intro','Harmony'] },
-    { title:'When the Stars Go Blue', artist:'Ryan Adams',                             key:'D', status:'learning', tags:['Late Night Vibe','Slow'] },
-    /* Originals */
-    { title:'Rodeo Bones',            artist:'Original',                               key:'G', status:'original', tags:['Story Song','Verse-Chorus','Demo Ready'] },
-    { title:'Sixty Miles of Nothing', artist:'Original',                               key:'Am',status:'original', tags:['Fingerpick','Lyric-Heavy','Work In Progress'] },
-    { title:'Four Walls and a Flag',  artist:'Original',                               key:'D', status:'original', tags:['Patriotic','Slow Burn','Needs Bridge'] },
-  ];
-
-  /* ── Active setlist (30-min bar set) ── */
-  const SETLIST = [
-    { song:'Wagon Wheel',                  key:'G',  notes:'Opens strong — get the room warmed up' },
-    { song:'Chicken Fried',                key:'G',  notes:'Keep energy up, no key change needed' },
-    { song:'Tennessee Whiskey',            key:'A',  notes:'Slow it down — let voice carry' },
-    { song:'Fast Car',                     key:'C',  notes:'Crossover appeal — quiet and focused' },
-    { song:'Friends in Low Places',        key:'Bb', notes:'Bar singalong — get them involved' },
-    { song:'Rodeo Bones (Original)',       key:'G',  notes:'Plug original — "this one\'s mine"' },
-    { song:'Take Me Home, Country Roads',  key:'G',  notes:'Closer — everyone sings, end strong' },
-  ];
-
-  /* ── Practice log ── */
-  const PRACTICE = [
-    { icon:'🎸', title:'Fingerpicking Pattern — Travis Pick',  detail:'12 min daily. Start slow (60 BPM), build to 120. Apply to "Sixty Miles of Nothing".', priority:'high' },
-    { icon:'🎤', title:'Vocal Warmup Routine',                 detail:'10 min before every session. Lip trills, sirens, 1-3-5 scales. Don\'t skip this.', priority:'high' },
-    { icon:'🎵', title:'Capo Chord Transitions — Key of D',    detail:'D → G → A → Bm at 80 BPM clean before adding capo shapes. 15 min.', priority:'medium' },
-    { icon:'📝', title:'Lyric Writing — 15 min stream of consciousness', detail:'Write without editing. Mine for phrases, images, lines. One session/day minimum.', priority:'medium' },
-    { icon:'🔄', title:'Barre Chord F Shape — Clean Tone',     detail:'5 min mute-and-strum drill. First string must ring clean every time.', priority:'low' },
-    { icon:'🎙️', title:'Record a Phone Demo',                  detail:'One rough voice memo per original per week. Listen back after 24 hours.', priority:'low' },
-  ];
-
-  /* ── Songwriting goals ── */
-  const WRITING_GOALS = [
-    { label:'Songs in Library',    current:15, target:50, unit:'songs' },
-    { label:'Originals',           current:3,  target:10, unit:'originals' },
-    { label:'Demo-Ready Originals',current:1,  target:5,  unit:'demos' },
-    { label:'Sets Performed',      current:0,  target:20, unit:'gigs' },
-  ];
+  /* ── Data from data.js ── */
+  const SONGS         = APP_DATA.creative.songs;
+  const SETLIST       = APP_DATA.creative.setlist;
+  const PRACTICE      = APP_DATA.creative.practice;
+  const WRITING_GOALS = APP_DATA.creative.writingGoals;
 
   /* ── Build HTML ── */
   const inner = document.getElementById('creative-inner');
   inner.innerHTML = `
     ${buildPageHeader('Guitar · Songwriting · Performance', 'Creative', 'Studio',
       'Acoustic country. Bar performances. Write the songs only you can write.',
-      `<span class="badge badge-accent">15 Songs · 3 Originals</span>`
+      `<span class="badge badge-accent">${SONGS.length} Songs · ${SONGS.filter(s=>s.status==='original').length} Originals</span>`
     )}
 
     <!-- Stats row -->

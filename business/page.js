@@ -6,95 +6,9 @@
 
 window.registerPage('business', function initBusiness() {
 
-  /* ── Stage framework ── */
-  const STAGES = [
-    { num:0, name:'Improvise',  sub:'Validate the idea',        current:true  },
-    { num:1, name:'Hustle',     sub:'First paying customers',   current:false },
-    { num:2, name:'Prove',      sub:'Repeatable sales',         current:false },
-    { num:3, name:'Optimise',   sub:'Unit economics work',      current:false },
-    { num:4, name:'Scale',      sub:'Hire & systematise',       current:false },
-    { num:5, name:'Expand',     sub:'New channels/markets',     current:false },
-    { num:6, name:'Dominate',   sub:'Category leader',          current:false },
-    { num:7, name:'Leverage',   sub:'Brand & moat',             current:false },
-    { num:8, name:'Exit Ready', sub:'Clean metrics',            current:false },
-    { num:9, name:'Capitalize', sub:'Exit or compound',         current:false },
-  ];
-
-  /* ── Department priorities — Stage 0 focus ── */
-  const DEPARTMENTS = [
-    {
-      icon:'🧩', name:'Product',
-      stage:'Build MVP',
-      priorities:[
-        'Ship a working v1 that solves one problem extremely well',
-        'Talk to 10 target users before building any new feature',
-        'Define the core loop: what brings users back daily?',
-      ]
-    },
-    {
-      icon:'📣', name:'Marketing',
-      stage:'Find the Signal',
-      priorities:[
-        'Test 3 traffic channels (content, cold outreach, communities)',
-        'Document which message resonates — track click-through on each',
-        'Build a waitlist or email list of 100+ ideal prospects',
-      ]
-    },
-    {
-      icon:'💰', name:'Sales',
-      stage:'First Revenue',
-      priorities:[
-        'Close 3 paying customers manually — charge from day 1',
-        'Document objections verbatim from every call',
-        'Build a simple CRM: prospect → demo → close pipeline',
-      ]
-    },
-    {
-      icon:'🎧', name:'Customer Service',
-      stage:'White Glove',
-      priorities:[
-        'Respond to every support message within 2 hours',
-        'Build a FAQ from the top 10 questions customers ask',
-        'Track NPS or satisfaction score monthly',
-      ]
-    },
-    {
-      icon:'💻', name:'IT & Infrastructure',
-      stage:'Lean Stack',
-      priorities:[
-        'Keep infrastructure costs under $50/mo until 10 paying customers',
-        'Set up error monitoring and basic uptime alerting',
-        'Automate onboarding flow so new users activate without you',
-      ]
-    },
-    {
-      icon:'🤝', name:'Recruiting',
-      stage:'Solo Grind',
-      priorities:[
-        'Identify the first hire: what bottleneck does it remove?',
-        'Build a repeatable process before hiring someone to run it',
-        'Document all core tasks so they\'re learnable in one week',
-      ]
-    },
-    {
-      icon:'📋', name:'HR & Culture',
-      stage:'Set the Tone',
-      priorities:[
-        'Write a one-page culture doc: what you value, what you won\'t tolerate',
-        'Default hiring bias: exceptional generalists over narrow specialists',
-        'Define what "done" looks like for every recurring task',
-      ]
-    },
-    {
-      icon:'📊', name:'Finance',
-      stage:'Know the Numbers',
-      priorities:[
-        'Track MRR, churn, and CAC in a single spreadsheet — update weekly',
-        'Separate personal and business finances immediately',
-        'Set a runway number: how many months before you need revenue?',
-      ]
-    },
-  ];
+  /* ── Data from data.js ── */
+  const STAGES      = APP_DATA.business.stages;
+  const DEPARTMENTS = APP_DATA.business.departments;
 
   /* ── KPIs ── */
   const KPIS = [

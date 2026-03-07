@@ -7,12 +7,13 @@
  *   Anthropic  → Network Only (never cache AI responses)
  */
 
-const CACHE_NAME = 'koltyn-os-v2';
+const CACHE_NAME = 'koltyn-os-v3';
 const FONT_CACHE = 'koltyn-fonts-v1';
 
 const APP_SHELL = [
   './index.html',
   './style.css',
+  './data.js',
   './app.js',
   './dashboard.js',
   './manifest.json',
@@ -21,7 +22,6 @@ const APP_SHELL = [
   './business/page.js',
   './wealth/page.js',
   './creative/page.js',
-  './vision/page.js',
   './icons/icon-72.png',
   './icons/icon-96.png',
   './icons/icon-128.png',

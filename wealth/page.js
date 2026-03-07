@@ -130,7 +130,7 @@ window.registerPage('wealth', function initWealth() {
   inner.innerHTML = `
     ${buildPageHeader('Financial System', 'Wealth', 'Dashboard',
       'Track every asset, investment, and liability. Know your exact net worth.',
-      `<span class="badge badge-warn">MRR Target: $50K</span>`
+      `<span class="badge badge-warn">MRR Target: ${formatCurrency(APP_DATA.wealth.mrrTarget)}</span>`
     )}
 
     <!-- Net Worth Hero -->
@@ -167,7 +167,7 @@ window.registerPage('wealth', function initWealth() {
       <div class="mrr-display">
         <div class="mrr-label">Envosta MRR</div>
         <div class="mrr-amount" style="font-size:40px" id="mrrDisplay">$0</div>
-        <div class="mrr-sub">Target: $50,000 / mo &nbsp;·&nbsp; Pre-revenue</div>
+        <div class="mrr-sub">Target: ${formatCurrency(APP_DATA.wealth.mrrTarget)} / mo &nbsp;·&nbsp; Pre-revenue</div>
       </div>
       <div class="mrr-progress-wrap">
         <div class="mrr-progress-labels">
@@ -186,7 +186,7 @@ window.registerPage('wealth', function initWealth() {
   function renderAll() {
     data = loadData();
     const { assets, liabilities, netWorth } = calcNetWorth(data);
-    const NW_GOAL = 1000000;
+    const NW_GOAL = APP_DATA.wealth.netWorthGoal;
 
     /* Net worth hero */
     const nwEl = document.getElementById('nwAmount');
