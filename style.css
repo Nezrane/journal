@@ -1837,3 +1837,518 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
     margin-top: env(safe-area-inset-top, 0px);
   }
 }
+
+
+/* ══════════════════════════════════════════════════════════════════
+   23. STATE-INTEGRATED UI — forms, ventures, blueprints, meals
+   These classes are used by the rewritten page.js files that read
+   from and write to window.STATE / IndexedDB.
+════════════════════════════════════════════════════════════════ */
+
+/* ── Shared form primitives ── */
+.form-input {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text);
+  font-family: inherit;
+  transition: border-color 0.18s;
+  box-sizing: border-box;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: rgba(255,255,255,0.06);
+}
+
+.form-input::placeholder { color: var(--muted); }
+
+textarea.form-input {
+  resize: vertical;
+  min-height: 72px;
+  line-height: 1.6;
+}
+
+select.form-input {
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23607080'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+
+select.form-input option { background: #141920; color: var(--text); }
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.form-field { display: flex; flex-direction: column; gap: 5px; }
+
+.form-label {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ── Venture summary cards (business Overview tab) ── */
+.venture-card {
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.18s;
+}
+
+.venture-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.venture-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.venture-card-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.venture-card-name {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  flex: 1;
+  min-width: 0;
+}
+
+.venture-card-desc {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.venture-card-metrics {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.venture-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.venture-metric-label {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.venture-metric-value {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* Editable metric inputs inside venture detail view */
+.venture-metric-input {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1.5px solid var(--border);
+  border-radius: 7px;
+  padding: 6px 10px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent);
+  box-sizing: border-box;
+  transition: border-color 0.18s;
+}
+
+.venture-metric-input:focus { outline: none; border-color: var(--accent); }
+
+.venture-notes-input {
+  width: 100%;
+  background: rgba(255,255,255,0.03);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  color: rgba(226,234,242,0.85);
+  font-family: inherit;
+  line-height: 1.65;
+  resize: vertical;
+  min-height: 80px;
+  box-sizing: border-box;
+  transition: border-color 0.18s;
+}
+
+.venture-notes-input:focus { outline: none; border-color: var(--accent); }
+.venture-notes-input::placeholder { color: var(--muted); }
+
+/* ── Blueprint step list ── */
+.bp-step-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  transition: opacity 0.2s;
+}
+
+.bp-step-row:last-child { border-bottom: none; }
+
+.bp-step-row.done { opacity: 0.55; }
+.bp-step-row.done .bp-step-name { text-decoration: line-through; color: var(--muted); }
+
+.bp-step-check {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s;
+  margin-top: 1px;
+}
+
+.bp-step-check:hover { border-color: var(--accent); }
+
+.bp-step-check.checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.bp-step-check.checked::after {
+  content: '✓';
+  font-size: 11px;
+  color: #0b0f14;
+  font-weight: 700;
+}
+
+.bp-step-content { flex: 1; min-width: 0; }
+
+.bp-step-name {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  margin-bottom: 3px;
+  transition: color 0.18s, text-decoration 0.18s;
+}
+
+.bp-step-desc {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.55;
+  margin-bottom: 8px;
+}
+
+.bp-step-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+
+.bp-step-action {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: rgba(124,106,247,0.08);
+  border: 1px solid rgba(124,106,247,0.2);
+  color: var(--accent);
+}
+
+.bp-step-notes {
+  width: 100%;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 7px 10px;
+  font-size: 12px;
+  color: rgba(226,234,242,0.8);
+  font-family: inherit;
+  line-height: 1.6;
+  resize: vertical;
+  min-height: 48px;
+  box-sizing: border-box;
+  transition: border-color 0.18s;
+}
+
+.bp-step-notes:focus { outline: none; border-color: var(--accent); }
+.bp-step-notes::placeholder { color: var(--muted); }
+
+.bp-step-date {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+/* ── Meal horizontal scroll (mobile) ── */
+.meal-options-scroll {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .meal-options-scroll {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 8px;
+  }
+
+  .meal-options-scroll > * {
+    flex-shrink: 0;
+    scroll-snap-align: start;
+    min-width: 220px;
+  }
+}
+
+/* ── Workout log history rows ── */
+.log-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-size: 13px;
+}
+
+.log-row:last-child { border-bottom: none; }
+
+.log-day-badge {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(255,107,53,0.1);
+  border: 1px solid rgba(255,107,53,0.2);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.log-date { color: var(--muted); font-size: 11px; flex-shrink: 0; }
+.log-notes { color: rgba(226,234,242,0.75); font-size: 12px; line-height: 1.4; flex: 1; font-style: italic; }
+
+/* ── Routine / stretching cards ── */
+.routine-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+}
+
+.routine-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.routine-card-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255,107,53,0.1);
+  border: 1px solid rgba(255,107,53,0.25);
+  color: var(--accent);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.routine-card-name {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.routine-card-duration {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  color: var(--accent);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.routine-card-instruction {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+/* ── Health principles cards ── */
+.principle-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+}
+
+.principle-card-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+  margin-bottom: 5px;
+}
+
+.principle-card-body {
+  font-size: 12px;
+  color: rgba(226,234,242,0.75);
+  line-height: 1.6;
+}
+
+/* ── Whole Foods section ── */
+.whole-foods-category {
+  margin-bottom: 18px;
+}
+
+.whole-foods-category-header {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.whole-foods-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 6px;
+}
+
+.whole-foods-item {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 11px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.whole-foods-item.top-pick {
+  border-color: rgba(245,200,66,0.3);
+  background: rgba(245,200,66,0.05);
+}
+
+.whole-foods-item-name {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  margin-bottom: 2px;
+}
+
+.whole-foods-item.top-pick .whole-foods-item-name { color: #f5c842; }
+
+.whole-foods-item-highlight {
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.whole-foods-item-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 5px;
+}
+
+.whole-foods-tag {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+/* ── Venture tabs (inside Ventures tab) ── */
+.venture-tab-bar {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+/* Export / import header buttons */
+.header-action-btn {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 7px 14px;
+  border-radius: 9px;
+  border: 1.5px solid var(--border);
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.header-action-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.header-action-btn.import:hover {
+  border-color: #3ddc6e;
+  color: #3ddc6e;
+}
+
+/* Responsive: collapse form-row to single column on mobile */
+@media (max-width: 600px) {
+  .form-row { grid-template-columns: 1fr; }
+  .whole-foods-grid { grid-template-columns: 1fr; }
+}

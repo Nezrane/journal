@@ -222,9 +222,78 @@ window.APP_DATA = {
     ]},
   },
 
+  /* ── Blueprint Templates ─────────────────────────────────────────
+     These are the framework options a user can attach to any venture.
+     STATE.addBlueprint(ventureId, templateId) creates a live copy with
+     per-step completion tracking in IndexedDB.
+  ────────────────────────────────────────────────────────────────── */
+  blueprintTemplates: [
+    {
+      id: 'hormozi',
+      name: 'Hormozi 9-Stage Roadmap',
+      description: "Alex Hormozi's framework for scaling a business from $0 to exit. Each stage has a clear graduation criterion.",
+      steps: [
+        { name:'Stage 0 — Improvise', description:'Validate the idea. Talk to 20 potential customers. Build something people will pay for. Get your first dollar of revenue.', keyActions:['Talk to 20 target customers face-to-face','Identify 1 core problem you solve better than anyone','Get your first $1 of revenue — any amount counts'] },
+        { name:'Stage 1 — Hustle',    description:'Build a predictable, manual sales process. Close 10 customers by doing things that do not scale. Document every objection.', keyActions:['Close 10 paying customers manually','Document objections verbatim from every call','Build a simple 3-stage CRM: prospect → demo → close'] },
+        { name:'Stage 2 — Prove',     description:'Prove the business model works repeatedly. Achieve $10K MRR with a clear repeatable motion. Reduce churn below 5%.', keyActions:['Hit $10K MRR with at least 30 paying customers','Document the exact sales script that closes deals','Reduce churn below 5% per month'] },
+        { name:'Stage 3 — Optimise',  description:'Make unit economics work. Know your CAC, LTV, and payback period. Cut costs without cutting growth.', keyActions:['Calculate CAC, LTV, and LTV:CAC ratio (target >3:1)','Identify and cut the top 3 wasteful costs','Automate or templatise 80% of customer onboarding'] },
+        { name:'Stage 4 — Scale',     description:'Hire to remove yourself from bottlenecks. Build systems that work without you. Aim for $50K MRR.', keyActions:['Make your first key hire (sales or ops)','Document all processes so anyone can run them in one week','Hit $50K MRR'] },
+        { name:'Stage 5 — Expand',    description:'Open new customer segments or geographic markets. Double down on the channel that works best.', keyActions:['Identify the top 2 new customer segments to target','Launch in one new market or geography','Hit $100K MRR'] },
+        { name:'Stage 6 — Dominate',  description:'Become the category leader. Build a moat through brand, data, or network effects. Outpace all competitors.', keyActions:['Win 30%+ market share in your primary niche','Launch a branded thought leadership content flywheel','Hit $500K MRR'] },
+        { name:'Stage 7 — Leverage',  description:'Use your market position to create defensible advantages. Acquire competitors or complementary tools. Build brand equity.', keyActions:['Evaluate 3 acquisition targets','Launch a partner / integration ecosystem','Raise strategic capital or pursue profitability'] },
+        { name:'Stage 8 — Exit Ready',description:'Clean up the cap table, metrics, and operations. Know your EBITDA multiple. Be ready to sell or raise at any moment.', keyActions:['Audit financials — clean GAAP books','Calculate valuation at 3× / 5× / 10× revenue multiples','Have a board-ready growth deck updated quarterly'] },
+        { name:'Stage 9 — Capitalize',description:'Execute the exit, acqui-hire, or infinite-game reinvestment strategy. Turn your equity into the next venture.', keyActions:['Close exit transaction or Series A/B round','Negotiate earn-out and transition terms','Deploy capital into the next venture or investment portfolio'] },
+      ],
+    },
+    {
+      id: 'saas_mvp',
+      name: 'SaaS MVP Blueprint',
+      description: 'Step-by-step guide to building, launching, and getting first paying customers for a SaaS product.',
+      steps: [
+        { name:'Define the Problem',       description:'Write a one-sentence problem statement. Identify who has the problem and how urgently they need it solved.', keyActions:['Write a 1-sentence problem statement','List 5 customer personas who have this problem','Rate urgency: do they actively search for a solution?'] },
+        { name:'Validate Demand',          description:'Talk to at least 20 people in your target market. Do not build anything yet. Just listen.', keyActions:['Conduct 20 discovery calls — no pitching','Record verbatim quotes about pain points','Identify the #1 problem worth solving'] },
+        { name:'Design the Core Loop',     description:'Sketch the one action that delivers value. Every other feature is secondary.', keyActions:['Draw the core user journey in 5 steps or fewer','Define what "aha moment" means for your user','Cut everything that is not the core loop from v1'] },
+        { name:'Build v1 MVP',             description:'Build only what is needed to deliver the core value. Ship ugly. Ship fast.', keyActions:['Set a ship date and do not move it','Use existing tools where possible (no custom infra)','Get v1 live in under 4 weeks'] },
+        { name:'Get First 10 Users',       description:'Manually recruit the first 10 users. Do not rely on marketing yet — do it by hand.', keyActions:['Personally onboard each of the first 10 users','Watch them use the product live (screen share or in person)','Ask: would you be very disappointed if this went away?'] },
+        { name:'Charge From Day 1',        description:'Do not give it away for free. Even $1 validates willingness to pay.', keyActions:['Set a price before the product is done','Close your first paid customer before launch','Never offer free forever — use trials with clear end dates'] },
+        { name:'Iterate to Retention',     description:'A product people return to daily is more valuable than one people love once.', keyActions:['Track weekly active users — target 40%+ retention','Interview every churned user within 48 hours of leaving','Ship at least one retention-focused improvement per week'] },
+        { name:'Build a Sales Playbook',   description:'Document exactly how you close deals so someone else can repeat it.', keyActions:['Write a sales script with responses to top 5 objections','Record 3 successful sales calls and transcribe key moments','Build a CRM — even a spreadsheet counts'] },
+        { name:'Systematise Operations',   description:'Remove yourself from every manual step. Everything should run without your direct involvement.', keyActions:['Automate onboarding with email sequences','Write SOPs for support and common customer questions','Hire or contract for the first task you hate most'] },
+        { name:'Hit $10K MRR',             description:'Prove the model works repeatedly. $10K MRR is the proof-of-concept threshold.', keyActions:['Close 30+ paying customers','Churn below 5% monthly','Document the exact repeatable motion that gets customers'] },
+      ],
+    },
+    {
+      id: 'content_marketing',
+      name: 'Content Marketing Flywheel',
+      description: 'Build a compounding content engine that drives inbound leads without paid ads.',
+      steps: [
+        { name:'Define Your Niche & POV',    description:'Pick one niche and one contrarian point of view. Generalists get ignored.', keyActions:['Write your one-line positioning statement','List 3 beliefs your audience holds that you disagree with','Commit to one primary content channel for 90 days'] },
+        { name:'Create Your Content Pillar', description:'Produce one long-form content piece per week that answers the #1 question your target customer is googling.', keyActions:['Research 20 questions your customer Googles','Publish one 1,500+ word post per week for 8 weeks','Track organic traffic and keyword rankings weekly'] },
+        { name:'Repurpose Everything',       description:'Turn every long-form piece into 5–10 short-form pieces for social distribution.', keyActions:['Extract 5 key quotes from each long-form post','Post one short-form piece daily across 2 channels','Build a content calendar for the next 30 days'] },
+        { name:'Build an Email List',        description:'Email is the only channel you own. Everything else is borrowed.', keyActions:['Create a lead magnet (checklist, guide, or template)','Add opt-in to every content piece','Target 100 subscribers in 30 days, 1,000 in 90 days'] },
+        { name:'Launch a Newsletter',        description:'A weekly newsletter turns readers into a community.', keyActions:['Send weekly newsletter every [set day] without exception','Track open rate (target 40%+) and click rate (target 5%+)','Feature one customer story or result every 4 weeks'] },
+        { name:'SEO Foundation',             description:'Build the infrastructure for long-term organic discovery.', keyActions:['Optimise all posts with target keyword in title, H1, and meta','Build 5 backlinks per month through guest posts or PR','Fix all technical SEO issues (speed, mobile, indexing)'] },
+        { name:'Convert Readers to Leads',   description:'Every piece of content should have a clear next step.', keyActions:['Add a CTA to every post (free trial, demo, or newsletter)','Build a landing page for each core content pillar','Track lead source — know which content drives signups'] },
+        { name:'Measure & Double Down',      description:'Cut content types that do not convert. Double the format that does.', keyActions:['Review analytics monthly — top 10 posts by traffic and leads','Cut the 2 lowest-performing content formats','Scale production of the highest-converting format'] },
+      ],
+    },
+  ],
+
   /* ── Business ────────────────────────────────────────────────── */
   business: {
     companyName: 'Envosta',
+    /* Venture seeds — pre-populated ventures for the app.
+       Each venture can have defaultBlueprints[] listing templateIds
+       to automatically attach on first STATE bootstrap. */
+    ventures: [
+      {
+        id: 'envosta',
+        name: 'Envosta',
+        icon: '🚀',
+        description: 'B2B SaaS — productivity and operations platform.',
+        defaultBlueprints: ['hormozi', 'saas_mvp'],
+      },
+    ],
     stages: [
       { num:0, name:'Improvise',  sub:'Validate the idea',      current:true  },
       { num:1, name:'Hustle',     sub:'First paying customers', current:false },
@@ -299,5 +368,132 @@ window.APP_DATA = {
     mrrTarget:      50000,
     netWorthGoal:   1000000,
   },
+
+  /* ── Whole Foods ─────────────────────────────────────────────────
+     Top nutrient-dense whole food options per category.
+     Each item: { name, highlight (key benefit), tags[] }
+     'top' flag = shown pinned at the top of the section.
+  ────────────────────────────────────────────────────────────────── */
+  wholeFoods: [
+    {
+      category: 'Protein Sources',
+      icon: '🥩',
+      items: [
+        { name:'Chicken Breast',        highlight:'~31g protein / 165 kcal per 100g. Leanest complete protein.', tags:['High Protein','Low Fat','Complete AA'], top:true },
+        { name:'Eggs (Whole)',          highlight:'6g protein + choline, B12, D, and healthy fats per egg.', tags:['Complete Protein','Micronutrients','Versatile'], top:true },
+        { name:'Greek Yogurt (Plain)', highlight:'~17g protein per 170g. Probiotics + calcium.', tags:['High Protein','Probiotics','Calcium'], top:true },
+        { name:'Salmon (Wild)',         highlight:'~25g protein + omega-3 EPA/DHA. Anti-inflammatory.', tags:['Omega-3','High Protein','Heart Health'] },
+        { name:'Beef (Lean, 93%)',      highlight:'High in creatine, iron, zinc, B12. ~26g protein per 100g.', tags:['Creatine','Iron','B12'] },
+        { name:'Cottage Cheese',        highlight:'Slow-digesting casein protein. Great before bed.', tags:['Casein','Slow Digesting','Calcium'] },
+        { name:'Tuna (Canned)',         highlight:'Convenient, cheap, ~25g protein. Watch sodium.', tags:['Convenient','High Protein','Omega-3'] },
+        { name:'Sardines',              highlight:'Calcium from bones + omega-3 + B12. Most nutrient-dense fish.', tags:['Omega-3','Calcium','B12','Top Pick'] },
+      ],
+    },
+    {
+      category: 'Complex Carbohydrates',
+      icon: '🌾',
+      items: [
+        { name:'Oats (Rolled)',         highlight:'Beta-glucan for cholesterol + slow carbs + 5g protein / 40g.', tags:['Fibre','Beta-Glucan','Sustained Energy'], top:true },
+        { name:'Sweet Potato',          highlight:'Vitamin A, potassium, fibre. 26g carbs per medium potato.', tags:['Vitamin A','Potassium','Anti-inflammatory'], top:true },
+        { name:'Brown Rice',            highlight:'Complete whole grain. Pairs with any protein. Easy bulk staple.', tags:['Whole Grain','Versatile','Bulk Friendly'], top:true },
+        { name:'Quinoa',                highlight:'Complete protein (8g per cup cooked) + all essential amino acids.', tags:['Complete Protein','Gluten Free','Versatile'] },
+        { name:'Lentils',               highlight:'~18g protein + 16g fibre per cooked cup. Cheap and filling.', tags:['Protein','Fibre','Iron','Budget'] },
+        { name:'Black Beans',           highlight:'Resistant starch + protein + fibre. Great gut food.', tags:['Fibre','Resistant Starch','Protein'] },
+        { name:'Bananas',               highlight:'Fast carbs + potassium. Perfect pre/post workout.', tags:['Potassium','Pre-Workout','Fast Carb'] },
+        { name:'Berries (Mixed)',        highlight:'Lowest sugar fruit. Highest antioxidant density of any food.', tags:['Antioxidants','Low Sugar','Vitamin C'] },
+      ],
+    },
+    {
+      category: 'Healthy Fats',
+      icon: '🥑',
+      items: [
+        { name:'Avocado',               highlight:'Monounsaturated fats + potassium + folate. 3g fibre per half.', tags:['MUFA','Potassium','Fibre'], top:true },
+        { name:'Extra Virgin Olive Oil',highlight:'Oleocanthal — natural anti-inflammatory. Best cooking oil.', tags:['Anti-inflammatory','MUFA','Heart Health'], top:true },
+        { name:'Walnuts',               highlight:'Highest plant omega-3 source. 4g per 28g serving.', tags:['Omega-3','Brain Health','ALA'], top:true },
+        { name:'Almonds',               highlight:'Vitamin E + magnesium + healthy fats. Fills gaps in most diets.', tags:['Vitamin E','Magnesium','Satiety'] },
+        { name:'Chia Seeds',            highlight:'Omega-3, calcium, fibre. Absorbs 10× its weight in liquid.', tags:['Omega-3','Fibre','Calcium'] },
+        { name:'Flaxseed (Ground)',     highlight:'Lignans + ALA + fibre. Best added to oats or yogurt.', tags:['Lignans','ALA','Fibre'] },
+        { name:'Coconut Oil (sparingly)',highlight:'MCTs for quick energy. Use in moderation — high in saturated fat.', tags:['MCT','Quick Energy','Use Sparingly'] },
+      ],
+    },
+    {
+      category: 'Vegetables',
+      icon: '🥦',
+      items: [
+        { name:'Broccoli',              highlight:'Sulforaphane = powerful cancer-fighting compound. Vitamin C + K + folate.', tags:['Sulforaphane','Vitamin C','Anti-cancer'], top:true },
+        { name:'Spinach',               highlight:'Iron, folate, K1, magnesium. Most nutrient-dense leafy green.', tags:['Iron','Folate','Magnesium','Lutein'], top:true },
+        { name:'Kale',                  highlight:'Vitamin K1 (660% DV per cup raw). Plus C, A, calcium.', tags:['Vitamin K','Calcium','Fibre'], top:true },
+        { name:'Bell Peppers (Red)',     highlight:'Highest vitamin C of any vegetable — 3× more than oranges.', tags:['Vitamin C','Antioxidants','Low Calorie'] },
+        { name:'Garlic',                highlight:'Allicin = immune + cardiovascular benefits. Eat daily.', tags:['Allicin','Immune','Cardiovascular'] },
+        { name:'Beets',                 highlight:'Nitrates boost blood flow and exercise performance.', tags:['Nitrates','Performance','Folate'] },
+        { name:'Asparagus',             highlight:'Folate + prebiotic inulin + chromium. Detoxification support.', tags:['Folate','Prebiotic','Detox'] },
+        { name:'Carrots',               highlight:'Beta-carotene (Vitamin A precursor). Eye health and immunity.', tags:['Beta-Carotene','Vitamin A','Eye Health'] },
+      ],
+    },
+    {
+      category: 'Dairy & Alternatives',
+      icon: '🥛',
+      items: [
+        { name:'Whole Milk',            highlight:'Complete nutrition: protein, fat, carbs + calcium + D.', tags:['Calcium','Vitamin D','Complete'], top:true },
+        { name:'Kefir',                 highlight:'More probiotics per serving than yogurt. Fermented milk drink.', tags:['Probiotics','Calcium','Fermented'], top:true },
+        { name:'Parmesan Cheese',       highlight:'Highest protein-to-calorie cheese. 10g protein per 28g.', tags:['High Protein','Calcium','B12'] },
+        { name:'Cottage Cheese (2%)',   highlight:'Casein protein + phosphorus + B12. Cheap and high volume.', tags:['Casein','B12','Budget'] },
+      ],
+    },
+  ],
+
+  /* ── Health Principles ────────────────────────────────────────── */
+  healthPrinciples: {
+    nutrition: [
+      { title:'Protein First',           body:'Build every meal around a protein source. Aim for 0.8–1g per lb of bodyweight. It fills you up, repairs muscle, and keeps metabolism elevated.' },
+      { title:'Whole Foods Over Packaged', body:'If it has more than 5 ingredients or ingredients you cannot pronounce, eat it sparingly. Real food is always more nutrient-dense than processed alternatives.' },
+      { title:'Eat the Rainbow',         body:'Different coloured vegetables contain different phytonutrients. Aim for 5+ colours per day — not a rule, a useful target.' },
+      { title:'Fibre Is Non-Negotiable', body:'30g fibre per day. It feeds gut bacteria, slows blood sugar spikes, and keeps you full. Eat vegetables, legumes, and whole grains daily.' },
+      { title:'Hydration Before Hunger', body:'Drink 500ml of water immediately on waking. Often what feels like hunger is mild dehydration. Target 3–4L daily during a bulk.' },
+      { title:'Time Calories Around Training', body:'Most of your carbohydrates should go around your workout window — before for fuel, after for recovery. Keep fats away from your pre-workout meal.' },
+      { title:'Track, Even Temporarily', body:'Most people underestimate calories by 20–30%. Track everything for 2–4 weeks to calibrate your intuition. After that, eat by feel.' },
+      { title:'Consistency Over Perfection', body:"One bad meal doesn't undo progress. One perfect meal doesn't build it. The pattern over 12 weeks is what matters." },
+    ],
+    workout: [
+      { title:'Progressive Overload Is Everything', body:'Your body adapts to stress. If the weight, reps, or difficulty is not increasing over time, you are not getting stronger. Track every set.' },
+      { title:'Technique Before Load',   body:'Bad technique with heavy weight builds injury, not muscle. Master the movement pattern first. Add load only when form is automatic.' },
+      { title:'Sleep Is the Workout',    body:'Muscle is not built during training — it is built during sleep. 7–9 hours is not optional. Every night of poor sleep undoes a workout.' },
+      { title:'Rest Days Are Training Days', body:'Active recovery — walking, stretching, and light movement — is more productive than full rest. Sedentary rest slows recovery.' },
+      { title:'Mind-Muscle Connection',  body:'Studies show that consciously thinking about the muscle you are working increases activation by up to 20%. Slow down, feel each rep.' },
+      { title:'Consistency > Intensity', body:'Training 4× per week every week for a year beats training 6× per week for 3 months and burning out. Show up. Even a short session counts.' },
+      { title:'Compound Lifts Are the Foundation', body:'Squat, deadlift, bench, overhead press, and row build more muscle and burn more calories than any isolation exercise. Do them first, every session.' },
+      { title:'Deload When You Dread the Gym', body:"If you haven't missed a week in 6–8 weeks, take a planned deload week at 60% intensity. It prevents injury and resets motivation." },
+    ],
+  },
+
+  /* ── Stretching Routine ──────────────────────────────────────── */
+  stretchingRoutine: {
+    morning: [
+      { name:'Cat-Cow', duration:'1 min', instruction:'On all fours. Arch spine up (cat), then dip spine down (cow). Slow and controlled. Wakes up the whole spine.' },
+      { name:'Hip Flexor Stretch', duration:'45 sec / side', instruction:'Low lunge position. Push hips forward gently. Feel stretch in front of the rear hip. Hold, do not bounce.' },
+      { name:'Thoracic Rotation', duration:'30 sec / side', instruction:'Sit cross-legged. Place hand behind head. Rotate upper body open toward the sky. Pause at end range.' },
+      { name:'Shoulder Pass-Through', duration:'1 min', instruction:'Hold a band or towel with wide grip. Pass slowly over head and behind back. Go as far as comfortable, tighten grip over time.' },
+      { name:'World\'s Greatest Stretch', duration:'30 sec / side', instruction:'Step forward into a lunge, place same-side hand down. Rotate upper body and reach to sky. Hold. Best single stretch you can do.' },
+      { name:'Standing Hamstring', duration:'45 sec / side', instruction:'Stand on one leg, rest other heel on hip-height surface. Hinge at the hips — not the lower back. Feel stretch in the raised leg hamstring.' },
+    ],
+    postWorkout: [
+      { name:'Pigeon Pose', duration:'90 sec / side', instruction:'From a push-up position, bring one knee forward toward same-side wrist. Lower hips. Best stretch for hip external rotation and glutes.' },
+      { name:'Lat Stretch', duration:'45 sec / side', instruction:'Hold a pole or rack with one hand. Step back and sit hips down and away. Feel the lat lengthen. Great after pull days.' },
+      { name:'Pec Doorway Stretch', duration:'45 sec / side', instruction:'Stand in a doorway. Place forearm on the frame at 90°. Step through gently. Feel the pec and front delt stretch.' },
+      { name:'Seated Spinal Twist', duration:'45 sec / side', instruction:'Sit on floor, cross one leg over. Twist toward the raised knee. Use elbow for leverage. Feel mid-spine release.' },
+      { name:'Child\'s Pose', duration:'60 sec', instruction:'Kneel and reach arms forward. Relax everything into the floor. Breathe deeply. Decompresses the spine after heavy loading.' },
+      { name:'Figure-Four Hip Stretch', duration:'60 sec / side', instruction:'Lie on back. Cross ankle over opposite knee. Pull both legs toward chest. Targets deep glute and piriformis.' },
+    ],
+  },
+
+  /* ── Morning Routine (Workout Page) ─────────────────────────── */
+  morningRoutine: [
+    { icon:'💧', step:'Hydrate',     detail:'500ml water immediately — before coffee, before phone.' },
+    { icon:'☀️', step:'Sunlight',    detail:'10–15 min outside. Sets circadian rhythm, boosts cortisol and serotonin in the right order.' },
+    { icon:'🧘', step:'5 Min Breathwork', detail:'Box breathing: 4 sec in, hold 4, out 4, hold 4. Repeat ×5. Activates parasympathetic nervous system.' },
+    { icon:'💪', step:'Activation Drills', detail:'10 pull-ups + 30 push-ups + 30s L-sit + hip/shoulder/hamstring stretch. Takes 8 minutes. Non-negotiable.' },
+    { icon:'🥣', step:'Eat Meal 1', detail:'High protein breakfast within 1 hour of waking. Sets the macro trajectory for the day.' },
+    { icon:'📓', step:'Journal',    detail:'5 minutes. Write 3 gratitudes, weekly priority, today\'s top 3. Do not start work until this is done.' },
+  ],
 
 };

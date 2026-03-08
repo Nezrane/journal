@@ -186,9 +186,12 @@ window.registerPage('creative', function initCreative() {
 
 /*
  * BOOT — all page modules are now registered.
- * Read the URL hash and navigate to the right page (or dashboard by default).
+ * STATE.load() must resolve before any page renders, because every page
+ * module reads from window.STATE.  It is async (IndexedDB) but completes
+ * in <5 ms on a warm cache, so there is no perceptible delay.
  */
-(function boot() {
+(async function boot() {
+  await STATE.load();
   const hash  = window.location.hash.replace('#', '');
   const valid = ['dashboard','nutrition','workout','business','wealth','creative'];
   navigateTo(valid.includes(hash) ? hash : 'dashboard');
