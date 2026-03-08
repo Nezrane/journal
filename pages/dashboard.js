@@ -37,69 +37,63 @@ window.registerPage('dashboard', function initDashboard() {
     ${buildPageHeader('Personal OS', 'Morning', 'Dashboard',
       new Date().toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'}))}
 
-    <!-- Stat rings — 5 radial progress rings built from APP_DATA.dashboard.stats -->
-    <div class="stat-rings-row" id="statRings"></div>
+    <!-- ══ COMMAND CENTER — North Star + Rings + Focus in one unified card ══ -->
+    <div class="card" style="overflow:hidden">
 
-    <!-- Main grid: combined priorities | workout + nav -->
-    <div class="grid-2" style="align-items:start">
-
-      <!-- Today's Focus — weekly priority + today's top 3 combined in one section.
-           Saves to STATE.data.dashboard via setWeeklyPriority + setTodayPriorities. -->
-      <div class="card">
-        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
-          <div class="card-title">Today's Focus</div>
-          <span class="badge badge-accent" style="font-size:10px">daily</span>
+      <!-- Zone 1: North Star — full-width banner at top -->
+      <div style="background:linear-gradient(135deg,rgba(79,195,247,0.1) 0%,rgba(2,136,209,0.05) 100%);border-bottom:1px solid rgba(79,195,247,0.2);padding:16px 20px">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#4fc3f7;margin-bottom:5px">North Star</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;line-height:1.35;margin-bottom:8px">${APP_DATA.profile.northStar}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${APP_DATA.profile.northStarPillars.map(p=>`<span style="font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;padding:3px 10px;border-radius:20px;border:1px solid rgba(79,195,247,0.3);color:#4fc3f7;background:rgba(79,195,247,0.08)">${p}</span>`).join('')}
         </div>
-        <div class="card-body">
-          <div style="font-size:10px;font-family:'Rajdhani',sans-serif;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:5px">Weekly Priority</div>
+      </div>
+
+      <!-- Zone 2: Stat rings — progress visualizations -->
+      <div style="padding:16px 20px;border-bottom:1px solid var(--border)">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Progress</div>
+        <div class="stat-rings-row" id="statRings"></div>
+      </div>
+
+      <!-- Zone 3: Today's Focus — weekly priority + top 3 + workout day -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+
+        <!-- Left: priorities -->
+        <div style="padding:16px 20px;border-right:1px solid var(--border)">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Today's Focus</div>
+
+          <div style="font-size:10px;font-family:'Rajdhani',sans-serif;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Weekly Priority</div>
           <input class="form-input" id="weeklyPriorityInput"
             placeholder="The single most important thing this week…"
-            value="${(ds.weeklyTopPriority || '').replace(/"/g, '&quot;')}" />
-          ${ds.weeklyPriorityDate ? `<div style="font-size:10px;color:var(--muted);margin-top:3px">Updated ${new Date(ds.weeklyPriorityDate).toLocaleDateString()}</div>` : ''}
+            value="${(ds.weeklyTopPriority || '').replace(/"/g, '&quot;')}"
+            style="margin-bottom:10px" />
 
-          <div style="font-size:10px;font-family:'Rajdhani',sans-serif;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:14px;margin-bottom:6px">Today's Top 3</div>
+          <div style="font-size:10px;font-family:'Rajdhani',sans-serif;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Today's Top 3</div>
           ${[0,1,2].map(i => `
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
-              <span style="font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent);font-size:14px;min-width:14px">${i+1}</span>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <span style="font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--accent);font-size:13px;min-width:14px;flex-shrink:0">${i+1}</span>
               <input class="form-input today-p" data-idx="${i}"
                 placeholder="Priority ${i+1}…"
                 value="${(ds.todayPriorities?.[i] || '').replace(/"/g, '&quot;')}"
                 style="flex:1" />
             </div>`).join('')}
 
-          <button class="day-tab active" id="saveFocus" style="margin-top:8px;padding:7px 16px">Save</button>
-          ${ds.todayPrioritiesDate ? `<div style="font-size:10px;color:var(--muted);margin-top:5px">Last saved ${new Date(ds.todayPrioritiesDate).toLocaleDateString()}</div>` : ''}
+          <button class="day-tab active" id="saveFocus" style="margin-top:6px;padding:7px 16px">Save</button>
+          ${ds.todayPrioritiesDate ? `<div style="font-size:10px;color:var(--muted);margin-top:5px">Saved ${new Date(ds.todayPrioritiesDate).toLocaleDateString()}</div>` : ''}
         </div>
-      </div>
 
-      <!-- Right column: workout card + quick nav -->
-      <div>
-        <!-- Today's Workout — reads STATE.data.workout, compact alongside priorities -->
-        <div class="card" style="margin-bottom:16px">
-          <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
-            <div class="card-title">Today's Workout</div>
-            <span class="badge badge-${todayWorkoutDay === 'Rest' ? 'muted' : 'warn'}">${ws.currentPhase === 'recovery' ? 'Recovery' : 'Ramping'}</span>
-          </div>
-          <div class="card-body">
-            <div style="font-family:'Rajdhani',sans-serif;font-size:38px;font-weight:700;color:var(--accent);line-height:1;margin-bottom:6px">${todayWorkoutDay}</div>
-            <div style="font-size:12px;color:var(--muted)">Week ${ws.weekNumber || 1} · Day ${(ws.currentDayIndex % ws.schedule.length) + 1} of ${ws.schedule.length}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:3px;line-height:1.65">${ws.schedule.join(' → ')}</div>
-            <button class="day-tab" onclick="navigateTo('workout')" style="margin-top:14px;padding:8px 16px">Open Workout →</button>
-          </div>
+        <!-- Right: today's workout -->
+        <div style="padding:16px 20px">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Today's Workout</div>
+          <span class="badge badge-${todayWorkoutDay === 'Rest' ? 'muted' : 'warn'}" style="margin-bottom:10px;display:inline-flex">${ws.currentPhase === 'recovery' ? 'Recovery' : 'Ramping'} · Wk ${ws.weekNumber || 1}</span>
+          <div style="font-family:'Rajdhani',sans-serif;font-size:42px;font-weight:700;color:var(--accent);line-height:1;margin-bottom:6px">${todayWorkoutDay}</div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.7;margin-bottom:14px">${ws.schedule.join(' → ')}</div>
+          <button class="day-tab" onclick="navigateTo('workout')" style="padding:8px 16px">Open Workout →</button>
         </div>
 
       </div>
-
     </div>
-
-    <!-- North Star — one overarching goal shown above the vision board -->
-    <div class="goal-card">
-      <div style="font-family:'Rajdhani',sans-serif;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#4fc3f7;margin-bottom:6px">North Star Goal</div>
-      <div class="goal-main">${APP_DATA.profile.northStar}</div>
-      <div class="goal-pillars">
-        ${APP_DATA.profile.northStarPillars.map(p=>`<span class="goal-pillar">${p}</span>`).join('')}
-      </div>
-    </div>
+    <!-- ══ END COMMAND CENTER ══ -->
 
     <!-- Morning Routine — static reference list (no checkboxes, purely informational) -->
     <div class="card">
