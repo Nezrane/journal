@@ -31,14 +31,6 @@ window.registerPage('dashboard', function initDashboard() {
   const ws              = STATE.data.workout;
   const todayWorkoutDay = STATE.currentWorkoutDay;
 
-  const QUICK_NAV = [
-    { page:'nutrition', icon:'◈', label:'Nutrition',  color:'#3ddc6e' },
-    { page:'workout',   icon:'◉', label:'Workout',    color:'#ff6b35' },
-    { page:'business',  icon:'◧', label:'Business',   color:'#7c6af7' },
-    { page:'wealth',    icon:'◈', label:'Wealth',     color:'#f5c842' },
-    { page:'creative',  icon:'♫', label:'Creative',   color:'#f06292' },
-  ];
-
   /* ── Build page HTML ── */
   const inner = document.getElementById('dashboard-inner');
   inner.innerHTML = `
@@ -96,13 +88,6 @@ window.registerPage('dashboard', function initDashboard() {
           </div>
         </div>
 
-        <!-- Quick nav -->
-        <div class="card">
-          <div class="card-header"><div class="card-title">Navigate</div></div>
-          <div class="card-body">
-            <div class="quick-nav" id="quickNav"></div>
-          </div>
-        </div>
       </div>
 
     </div>
@@ -195,18 +180,6 @@ window.registerPage('dashboard', function initDashboard() {
     const btn = inner.querySelector('#saveFocus');
     btn.textContent = 'Saved ✓';
     setTimeout(() => { btn.textContent = 'Save'; }, 1500);
-  });
-
-  /* ── Quick nav ── */
-  const quickNav = document.getElementById('quickNav');
-  QUICK_NAV.forEach(item => {
-    const el = document.createElement('div');
-    el.className = 'quick-nav-item';
-    el.innerHTML = `
-      <div class="quick-nav-icon" style="color:${item.color}">${item.icon}</div>
-      <div class="quick-nav-label">${item.label}</div>`;
-    el.addEventListener('click', () => navigateTo(item.page));
-    quickNav.appendChild(el);
   });
 
   /* ── Vision areas ── */
