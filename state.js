@@ -131,16 +131,30 @@ function _defaultState() {
 
     /* ── Workout ──
        schedule = ordered day types for one full week cycle.
-       After Lower body there is an extra Rest day (lower is taxing).
-       currentDayIndex advances when user logs a workout.
+       Order: Upper → Lower → Rest → Pull → Push → Legs → Rest → repeat.
+       A Rest day follows Lower (taxing on posterior chain) and Legs.
+       currentDayIndex advances when user logs a workout or rest day.
+       cycleCount  = number of full cycles completed in the current phase.
+       weekNumber  = absolute week (1–12); auto-increments each cycle.
+       Recovery phase = 5 cycles (Weeks 1–5).
+       Ramping phase  = 7 cycles (Weeks 6–12).
+       After Ramping completes, program resets to Recovery from week 1.
     */
     workout: {
       currentPhase:    'recovery',
-      schedule:        ['Pull', 'Upper', 'Lower', 'Rest', 'Push', 'Legs', 'Rest'],
+      schedule:        ['Upper', 'Lower', 'Rest', 'Pull', 'Push', 'Legs', 'Rest'],
       currentDayIndex: 0,
+      cycleCount:      0,
+      weekNumber:      1,
       log:             [],
+      logbook:         [],
+      progressPics:    [],
       /* log entry shape:
-         { date, dayName, phase, completedExercises: ['Ex Name',...], notes } */
+         { date, dayName, phase, completedExercises: ['Ex Name',...], notes }
+         logbook entry shape:
+         { date, dayName, phase, exercises: [{name, sets:[{reps,weight,duration,notes}]}] }
+         progressPics entry shape:
+         { date, dataUrl, note } */
     },
 
     /* ── Nutrition ── */
@@ -190,9 +204,20 @@ window.STATE = {
       _db = await _openDB();
       const saved = await _idbGet(_db);
       this.data = saved || _defaultState();
-      /* Migrate old state missing new fields */
+
+      /* ── State migration: safely add fields introduced in newer versions ── */
       if (!this.data.dashboard.weeklyTopPriority) {
         this.data.dashboard.weeklyTopPriority = '';
+      }
+      const wk = this.data.workout;
+      if (!Array.isArray(wk.logbook))      wk.logbook      = [];
+      if (!Array.isArray(wk.progressPics)) wk.progressPics = [];
+      if (wk.cycleCount  === undefined)    wk.cycleCount   = 0;
+      if (wk.weekNumber  === undefined)    wk.weekNumber   = 1;
+      /* Migrate old Pull-first schedule to the new Upper-first schedule */
+      if (wk.schedule && wk.schedule[0] === 'Pull') {
+        wk.schedule        = ['Upper', 'Lower', 'Rest', 'Pull', 'Push', 'Legs', 'Rest'];
+        wk.currentDayIndex = 0;
       }
       console.log('[STATE] Loaded from', saved ? 'IndexedDB' : 'defaults');
     } catch (err) {
@@ -327,15 +352,76 @@ window.STATE = {
       completedExercises: completedExercises || [],
       notes: notes || '',
     });
-    /* Keep last 90 log entries */
+    /* Keep last 90 summary log entries */
     if (log.length > 90) log.length = 90;
-    /* Advance the schedule */
+    /* Advance the schedule index */
     s.currentDayIndex = (s.currentDayIndex + 1) % s.schedule.length;
+    /* When index wraps back to 0, a full cycle is complete.
+       This drives weekNumber and cycleCount which gate phase transitions. */
+    if (s.currentDayIndex === 0) {
+      s.cycleCount = (s.cycleCount || 0) + 1;
+      s.weekNumber = Math.min(12, (s.weekNumber || 1) + 1);
+    }
     this.save();
   },
 
   setWorkoutPhase(phase) {
     this.data.workout.currentPhase = phase; /* 'recovery' | 'ramping' */
+    this.save();
+  },
+
+  /**
+   * Advance to the next phase once the current phase cycle limit is met.
+   * Recovery (5 cycles) → Ramping.
+   * Ramping  (7 cycles) → Recovery (12-week program resets).
+   * Resets cycleCount and currentDayIndex to 0; persists to IDB.
+   */
+  advancePhase() {
+    const s = this.data.workout;
+    if (s.currentPhase === 'recovery') {
+      s.currentPhase = 'ramping';
+    } else {
+      /* After Ramping completes the program resets to Recovery week 1 */
+      s.currentPhase = 'recovery';
+      s.weekNumber   = 1;
+    }
+    s.cycleCount      = 0;
+    s.currentDayIndex = 0;
+    this.save();
+  },
+
+  /**
+   * Add a detailed logbook entry with per-exercise set data.
+   * Kept separate from the summary log[] so the Logbook tab can display
+   * richer data (sets × reps × weight) independent of the summary feed.
+   * entry: { dayName, phase, exercises:[{name, sets:[{reps,weight,duration,notes}]}] }
+   * Persisted to IDB via save().
+   */
+  addLogbookEntry(entry) {
+    const s = this.data.workout;
+    if (!Array.isArray(s.logbook)) s.logbook = [];
+    s.logbook.unshift({ date: new Date().toISOString(), ...entry });
+    if (s.logbook.length > 90) s.logbook.length = 90;
+    this.save();
+  },
+
+  /**
+   * Store a progress picture as a base64 data URL.
+   * Images are stored inline in STATE so they survive export/import as JSON.
+   * Note: large images will make the exported JSON file much larger.
+   * Persisted to IDB via save().
+   */
+  addProgressPic(dataUrl, note) {
+    const s = this.data.workout;
+    if (!Array.isArray(s.progressPics)) s.progressPics = [];
+    s.progressPics.unshift({ date: new Date().toISOString(), dataUrl, note: note || '' });
+    this.save();
+  },
+
+  removeProgressPic(idx) {
+    const arr = this.data.workout.progressPics;
+    if (!arr || idx < 0 || idx >= arr.length) return;
+    arr.splice(idx, 1);
     this.save();
   },
 

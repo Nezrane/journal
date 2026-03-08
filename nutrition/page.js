@@ -2,41 +2,61 @@
  * KOLTYN OS — nutrition/page.js
  *
  * DATA FLOW
- *   APP_DATA.nutrition  → base meal options (read-only templates)
- *   STATE.data.nutrition → live selections + custom meals (persisted to IDB)
+ *   APP_DATA.nutrition  → base meal options per phase (read-only)
+ *   APP_DATA.wholeFoods → whole foods reference categories (read-only)
+ *   APP_DATA.healthPrinciples.nutrition → static principles (read-only)
  *
- * KEY FEATURES
- *   • Meal slots scroll horizontally on mobile
- *   • Up to 10 custom meals per slot (via "+ Add Meal" modal)
- *   • Whole Foods section — top nutrient-dense options by category
- *   • Health Principles — static principles section
- *   • Phase selection and macro summary all write back to STATE
+ *   STATE.data.nutrition → currentPhase, selectedMeals, customMeals (read + write)
+ *
+ * WRITES TO STATE → IDB
+ *   STATE.setNutritionPhase(phase)              → nutrition.currentPhase
+ *   STATE.selectMeal(phase, slotIdx, mealIdx)   → nutrition.selectedMeals
+ *   STATE.addCustomMeal(phase, slotIdx, mealObj) → nutrition.customMeals
+ *   STATE.removeCustomMeal(phase, slotIdx, idx)  → nutrition.customMeals
+ *   All mutators call save() which writes to IndexedDB asynchronously.
+ *
+ * REMOVE BUTTONS
+ *   Base meals: clicking a selected meal deselects it (toggle already in place).
+ *   Custom meals: a permanent × delete button removes the meal from STATE/IDB.
+ *
+ * WHOLE FOODS
+ *   All categories shown in one compact multi-column grid (not separate cards).
  */
 
 window.registerPage('nutrition', function initNutrition() {
 
-  /* ── Base data ── */
-  const BASE_PHASES     = APP_DATA.nutrition.phases;
-  const BASE_MEALS      = APP_DATA.nutrition.meals;
-  const MEAL_TITLES     = APP_DATA.nutrition.mealTitles;
-  const ns              = STATE.data.nutrition;
+  /* ── Base data (read-only) ── */
+  const BASE_PHASES = APP_DATA.nutrition.phases;
+  const BASE_MEALS  = APP_DATA.nutrition.meals;
+  const MEAL_TITLES = APP_DATA.nutrition.mealTitles;
+  const ns          = STATE.data.nutrition;
 
-  /* Merge: base meals + any custom meals the user has added */
+  /* Merge base meals + user-added custom meals for the given phase.
+     Base meals are always first; custom meals append at the end.
+     The combined index is used for selectedMeals[phase][slotIdx]. */
   function getMeals(phase) {
     const base   = BASE_MEALS[phase];
     const custom = ns.customMeals[phase] || [[], [], [], []];
     return base.map((slot, i) => [...slot, ...(custom[i] || [])]);
   }
 
+  /* Index at which custom meals start for a given phase + slot */
+  function baseCount(phase, slotIdx) {
+    return BASE_MEALS[phase][slotIdx].length;
+  }
+
   let currentPhase  = ns.currentPhase || 'bulk';
-  let selectedMeals = ns.selectedMeals[currentPhase] ? [...ns.selectedMeals[currentPhase]] : [null, null, null, null];
+  let selectedMeals = ns.selectedMeals[currentPhase]
+    ? [...ns.selectedMeals[currentPhase]]
+    : [null, null, null, null];
+
   const recipeCache = {};
 
   /* ── Page shell ── */
   const inner = document.getElementById('nutrition-inner');
   inner.innerHTML = `
     ${buildPageHeader('Daily Planner', 'Nutrition', 'Dashboard',
-      'Select one option per meal — all combinations hit your daily target exactly.',
+      'Select one option per meal slot — all combinations hit your daily target.',
       `<div class="legend">
          <div class="legend-item"><div class="legend-dot" style="background:var(--simple)"></div>Simple</div>
          <div class="legend-item"><div class="legend-dot" style="background:var(--premade)"></div>Premade</div>
@@ -50,70 +70,40 @@ window.registerPage('nutrition', function initNutrition() {
        </select>`
     )}
 
-    <!-- Targets card -->
-    <div class="targets-card" id="targetsCard">
-      <div class="targets-info">
-        <div class="targets-title">Daily Target</div>
-        <div class="targets-phase-name" id="phaseName">Bulk</div>
+    <!-- ── Macro summary pinned at top — targets + currently selected side by side ── -->
+    <div class="card" id="macroSummaryCard">
+      <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+        <div class="card-title">Daily Macro Summary</div>
+        <div class="match-badge" id="matchBadge">
+          <div class="checkmark"><svg viewBox="0 0 8 8" fill="none"><polyline points="1,4 3,6 7,2" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+          On target ✓
+        </div>
       </div>
-      <div class="targets-divider"></div>
-      <div class="targets-macros">
-        <div class="macro-target calories"><div class="macro-target-label">Calories</div><div class="macro-target-val" id="tCal">—<span>kcal</span></div></div>
-        <div class="macro-target protein"><div class="macro-target-label">Protein</div><div class="macro-target-val" id="tPro">—<span>g</span></div></div>
-        <div class="macro-target carbs"><div class="macro-target-label">Carbs</div><div class="macro-target-val" id="tCarb">—<span>g</span></div></div>
-        <div class="macro-target fats"><div class="macro-target-label">Fats</div><div class="macro-target-val" id="tFat">—<span>g</span></div></div>
+      <div class="card-body" style="padding:12px 16px">
+        <div class="macro-summary-grid" id="macroSummaryGrid"></div>
       </div>
     </div>
 
-    <!-- Meals -->
+    <!-- ── Meal slots ── -->
     <div>
       <div class="meals-section-title">Select one per meal slot — tap ⓘ for recipe &amp; cultural history</div>
       <div class="meals-grid" id="mealsGrid"></div>
     </div>
 
-    <!-- Summary -->
-    <div class="summary-card">
-      <div class="summary-header">
-        <div class="summary-title">Daily Macro Summary</div>
-        <div class="match-badge" id="matchBadge">
-          <div class="checkmark"><svg viewBox="0 0 8 8" fill="none"><polyline points="1,4 3,6 7,2" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></div>
-          Macros perfectly matched ✓
-        </div>
-      </div>
-      <div class="summary-macros">
-        <div class="summary-macro sm-cal" id="smCal">
-          <div class="sm-label">Calories</div>
-          <div class="sm-row"><span class="sm-current" id="sCal">0</span><span class="sm-unit">kcal</span><span class="sm-target" id="stCal">/ —</span></div>
-          <div class="sm-bar-track"><div class="sm-bar-fill" id="bCal" style="width:0%"></div></div>
-        </div>
-        <div class="summary-macro sm-pro" id="smPro">
-          <div class="sm-label">Protein</div>
-          <div class="sm-row"><span class="sm-current" id="sPro">0</span><span class="sm-unit">g</span><span class="sm-target" id="stPro">/ —</span></div>
-          <div class="sm-bar-track"><div class="sm-bar-fill" id="bPro" style="width:0%"></div></div>
-        </div>
-        <div class="summary-macro sm-carb" id="smCarb">
-          <div class="sm-label">Carbs</div>
-          <div class="sm-row"><span class="sm-current" id="sCarb">0</span><span class="sm-unit">g</span><span class="sm-target" id="stCarb">/ —</span></div>
-          <div class="sm-bar-track"><div class="sm-bar-fill" id="bCarb" style="width:0%"></div></div>
-        </div>
-        <div class="summary-macro sm-fat" id="smFat">
-          <div class="sm-label">Fats</div>
-          <div class="sm-row"><span class="sm-current" id="sFat">0</span><span class="sm-unit">g</span><span class="sm-target" id="stFat">/ —</span></div>
-          <div class="sm-bar-track"><div class="sm-bar-fill" id="bFat" style="width:0%"></div></div>
-        </div>
+    <!-- ── Whole Foods reference — compact multi-column layout ── -->
+    <div class="section-label">Whole Foods Reference</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Top nutrient-dense options. Build meals around these.</div>
+    <div class="card">
+      <div class="card-body" style="padding:12px 16px">
+        <div class="whole-foods-compact-grid" id="wholeFoodsCompact"></div>
       </div>
     </div>
 
-    <!-- Whole Foods section -->
-    <div class="section-label">Whole Foods Reference</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Top nutrient-dense options. Build meals around these.</div>
-    <div id="wholeFoodsGrid"></div>
-
-    <!-- Health Principles -->
+    <!-- ── Nutrition Principles ── -->
     <div class="section-label" style="margin-top:8px">Nutrition Principles</div>
     <div class="grid-2" id="nutritionPrinciples"></div>`;
 
-  /* ── Set saved phase on select ── */
+  /* ── Set saved phase ── */
   document.getElementById('phaseSelect').value = currentPhase;
 
   /* ── Recipe modal ── */
@@ -121,7 +111,9 @@ window.registerPage('nutrition', function initNutrition() {
   const modalBody = document.getElementById('modalBody');
   const modalEl   = document.querySelector('#page-nutrition .modal');
 
-  function catClass(c) { return c==='Simple'?'cat-simple':c==='Premade'?'cat-premade':'cat-gourmet'; }
+  function catClass(c) {
+    return c === 'Simple' ? 'cat-simple' : c === 'Premade' ? 'cat-premade' : 'cat-gourmet';
+  }
 
   function openModal(opt) {
     document.getElementById('modalEyebrow').textContent    = opt.cuisine + ' · ' + opt.category;
@@ -140,13 +132,13 @@ window.registerPage('nutrition', function initNutrition() {
   }
 
   function closeModal() {
-    if (modalEl) { modalEl.style.transform=''; modalEl.style.transition=''; }
+    if (modalEl) { modalEl.style.transform = ''; modalEl.style.transition = ''; }
     overlay.classList.remove('open');
     document.body.style.overflow = '';
   }
 
-  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
-  document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
   document.getElementById('modalClose').addEventListener('click', closeModal);
   setupSwipeDismiss(modalEl, closeModal);
 
@@ -156,24 +148,24 @@ window.registerPage('nutrition', function initNutrition() {
     modalBody.innerHTML = `<div class="modal-loading"><div class="spinner"></div><div class="loading-text">Fetching Recipe</div><div class="loading-sub">Ingredients, directions &amp; cultural history…</div></div>`;
     const prompt = `You are an expert chef and food historian. Generate a detailed recipe card for: "${opt.name}" (${opt.cuisine} cuisine, ${opt.category}, ${opt.calories} kcal, ${opt.protein}g protein, ${opt.carbs}g carbs, ${opt.fats}g fat). Return ONLY valid JSON, no markdown: {"description":"2-3 vivid sentences","history":"3-4 sentences on cultural origin","ingredients":[{"name":"","amount":""}],"directions":["step"]}. 7-11 ingredients, 4-6 steps.`;
     try {
-      const res  = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
-      if(!res.ok) throw new Error('API '+res.status);
-      const data = await res.json();
-      const raw  = data.content.map(b=>b.text||'').join('').trim().replace(/^```[a-z]*\n?/,'').replace(/\n?```$/,'').trim();
+      const res    = await fetch('https://api.anthropic.com/v1/messages', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, messages:[{ role:'user', content:prompt }] }) });
+      if (!res.ok) throw new Error('API ' + res.status);
+      const data   = await res.json();
+      const raw    = data.content.map(b => b.text || '').join('').trim().replace(/^```[a-z]*\n?/, '').replace(/\n?```$/, '').trim();
       const recipe = JSON.parse(raw);
       recipeCache[key] = recipe;
       renderRecipe(recipe);
-    } catch(err) {
+    } catch (err) {
       modalBody.innerHTML = `<div class="modal-error"><span class="err-icon">⚠</span>Could not load recipe details.<br><small style="opacity:.4;font-size:11px">${err.message}</small></div>`;
     }
   }
 
   function renderRecipe(r) {
-    const ing   = (r.ingredients||[]).map(i=>`<div class="ingredient-item"><div class="ingredient-dot"></div><div class="ingredient-name">${i.name}</div><div class="ingredient-amount">${i.amount}</div></div>`).join('');
-    const steps = (r.directions||[]).map((s,i)=>`<div class="direction-step"><div class="step-num">${i+1}</div><div class="step-text">${s}</div></div>`).join('');
+    const ing   = (r.ingredients || []).map(i => `<div class="ingredient-item"><div class="ingredient-dot"></div><div class="ingredient-name">${i.name}</div><div class="ingredient-amount">${i.amount}</div></div>`).join('');
+    const steps = (r.directions  || []).map((s, i) => `<div class="direction-step"><div class="step-num">${i+1}</div><div class="step-text">${s}</div></div>`).join('');
     modalBody.innerHTML = `
-      <div class="modal-section"><div class="modal-section-label">About This Dish</div><div class="description-text">${r.description||'—'}</div></div>
-      <div class="modal-section"><div class="modal-section-label">Cultural History</div><div class="history-text">${r.history||'—'}</div></div>
+      <div class="modal-section"><div class="modal-section-label">About This Dish</div><div class="description-text">${r.description || '—'}</div></div>
+      <div class="modal-section"><div class="modal-section-label">Cultural History</div><div class="history-text">${r.history || '—'}</div></div>
       <div class="modal-section"><div class="modal-section-label">Ingredients</div><div class="ingredients-grid">${ing}</div></div>
       <div class="modal-section"><div class="modal-section-label">Directions</div><div class="directions-list">${steps}</div></div>`;
   }
@@ -183,7 +175,6 @@ window.registerPage('nutrition', function initNutrition() {
 
   function openAddMealModal(slotIdx) {
     addingMealSlot = slotIdx;
-    /* Reuse existing modal structure with a form */
     document.getElementById('modalEyebrow').textContent    = 'Custom Meal';
     document.getElementById('modalTitle').textContent      = MEAL_TITLES[slotIdx];
     document.getElementById('modalCuisineTag').textContent = '';
@@ -197,8 +188,8 @@ window.registerPage('nutrition', function initNutrition() {
       <div class="modal-section">
         <div class="modal-section-label">Add a Custom Meal Option</div>
         <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
-          <input class="form-input" id="cmName"     placeholder="Meal name" />
-          <input class="form-input" id="cmCuisine"  placeholder="Cuisine (e.g. American)" />
+          <input class="form-input" id="cmName"    placeholder="Meal name" />
+          <input class="form-input" id="cmCuisine" placeholder="Cuisine (e.g. American)" />
           <select class="app-select" id="cmCat">
             <option value="Simple">Simple</option>
             <option value="Premade">Premade</option>
@@ -218,13 +209,14 @@ window.registerPage('nutrition', function initNutrition() {
     document.body.style.overflow = 'hidden';
 
     document.getElementById('saveCm').addEventListener('click', () => {
-      const name = document.getElementById('cmName').value.trim();
-      const cal  = parseInt(document.getElementById('cmCal').value) || 0;
-      const pro  = parseInt(document.getElementById('cmPro').value) || 0;
-      const carb = parseInt(document.getElementById('cmCarb').value) || 0;
-      const fat  = parseInt(document.getElementById('cmFat').value) || 0;
+      const name  = document.getElementById('cmName').value.trim();
+      const cal   = parseInt(document.getElementById('cmCal').value)  || 0;
+      const pro   = parseInt(document.getElementById('cmPro').value)  || 0;
+      const carb  = parseInt(document.getElementById('cmCarb').value) || 0;
+      const fat   = parseInt(document.getElementById('cmFat').value)  || 0;
       const errEl = document.getElementById('cmError');
-      if (!name || !cal) { errEl.textContent = 'Name and calories are required.'; errEl.style.display='block'; return; }
+      if (!name || !cal) { errEl.textContent = 'Name and calories are required.'; errEl.style.display = 'block'; return; }
+      /* STATE.addCustomMeal writes to STATE.data.nutrition.customMeals and saves to IDB */
       STATE.addCustomMeal(currentPhase, addingMealSlot, {
         name,
         category: document.getElementById('cmCat').value,
@@ -236,49 +228,51 @@ window.registerPage('nutrition', function initNutrition() {
     });
   }
 
-  /* ── Render phase ── */
+  /* ══════════════════════════════════════════════════════════════
+     RENDER PHASE — rebuilds meal grid + updates summary
+  ══════════════════════════════════════════════════════════════ */
   function renderPhase() {
     const ph = BASE_PHASES[currentPhase];
-    selectedMeals = ns.selectedMeals[currentPhase] ? [...ns.selectedMeals[currentPhase]] : [null, null, null, null];
+    selectedMeals = ns.selectedMeals[currentPhase]
+      ? [...ns.selectedMeals[currentPhase]]
+      : [null, null, null, null];
 
-    document.getElementById('phaseName').textContent   = ph.name;
-    document.getElementById('tCal').innerHTML  = ph.calories+'<span>kcal</span>';
-    document.getElementById('tPro').innerHTML  = ph.protein +'<span>g</span>';
-    document.getElementById('tCarb').innerHTML = ph.carbs   +'<span>g</span>';
-    document.getElementById('tFat').innerHTML  = ph.fats    +'<span>g</span>';
-    document.getElementById('stCal').textContent  = '/ '+ph.calories;
-    document.getElementById('stPro').textContent  = '/ '+ph.protein+'g';
-    document.getElementById('stCarb').textContent = '/ '+ph.carbs+'g';
-    document.getElementById('stFat').textContent  = '/ '+ph.fats+'g';
+    /* Update macro summary at top */
+    updateSummary();
 
     const allMeals = getMeals(currentPhase);
-    const grid = document.getElementById('mealsGrid');
+    const grid     = document.getElementById('mealsGrid');
     grid.innerHTML = '';
 
     allMeals.forEach((opts, mi) => {
-      /* Cap at 10 visible options */
-      const visible = opts.slice(0, 10);
-      const card = document.createElement('div');
+      const visible  = opts.slice(0, 10);
+      const baseLen  = baseCount(currentPhase, mi);
+      const card     = document.createElement('div');
       card.className = 'meal-card';
       card.innerHTML = `
         <div class="meal-card-header">
-          <div class="meal-card-number">Slot ${mi+1}</div>
+          <div class="meal-card-number">Slot ${mi + 1}</div>
           <div class="meal-card-title">${MEAL_TITLES[mi]}</div>
           <button class="day-tab add-meal-btn" data-slot="${mi}" style="margin-left:auto;font-size:11px;padding:4px 10px">+ Custom</button>
         </div>
-        <!-- Horizontal scroll on mobile, wrap on desktop -->
         <div class="meal-options-scroll" id="nl-${mi}"></div>`;
       grid.appendChild(card);
 
       const list = card.querySelector(`#nl-${mi}`);
       visible.forEach((opt, oi) => {
+        const isCustom   = oi >= baseLen;
+        const customIdx  = oi - baseLen; /* index within customMeals[phase][mi] */
+        const isSelected = selectedMeals[mi] === oi;
+
         const item = document.createElement('div');
-        item.className = 'meal-option';
-        if (selectedMeals[mi] === oi) item.classList.add('selected');
+        item.className = 'meal-option' + (isSelected ? ' selected' : '');
         item.innerHTML = `
           <div class="meal-option-top">
             <div class="meal-option-name">${opt.name}</div>
-            <div class="category-badge ${catClass(opt.category)}">${opt.category}</div>
+            <div style="display:flex;gap:4px;align-items:center">
+              <div class="category-badge ${catClass(opt.category)}">${opt.category}</div>
+              ${isCustom ? `<button class="meal-delete-btn" title="Remove this custom meal">×</button>` : ''}
+            </div>
           </div>
           <div class="meal-option-bottom">
             <span class="cuisine-tag">${opt.cuisine}</span>
@@ -290,8 +284,35 @@ window.registerPage('nutrition', function initNutrition() {
             </div>
             <button class="info-btn">i</button>
           </div>`;
-        item.addEventListener('click', e => { if(e.target.classList.contains('info-btn')) return; selectMeal(mi, oi, item); });
-        item.querySelector('.info-btn').addEventListener('click', e => { e.stopPropagation(); openModal(opt); });
+
+        /* Select / deselect by clicking the card (toggle) */
+        item.addEventListener('click', e => {
+          if (e.target.classList.contains('info-btn') ||
+              e.target.classList.contains('meal-delete-btn')) return;
+          selectMeal(mi, oi, item);
+        });
+
+        /* Recipe info button */
+        item.querySelector('.info-btn').addEventListener('click', e => {
+          e.stopPropagation();
+          openModal(opt);
+        });
+
+        /* Delete custom meal — removes from STATE and re-renders */
+        const delBtn = item.querySelector('.meal-delete-btn');
+        if (delBtn) {
+          delBtn.addEventListener('click', e => {
+            e.stopPropagation();
+            /* If this custom meal was selected, deselect first */
+            if (selectedMeals[mi] === oi) {
+              STATE.selectMeal(currentPhase, mi, null);
+            }
+            /* STATE.removeCustomMeal splices the array and saves to IDB */
+            STATE.removeCustomMeal(currentPhase, mi, customIdx);
+            renderPhase();
+          });
+        }
+
         list.appendChild(item);
       });
 
@@ -301,96 +322,106 @@ window.registerPage('nutrition', function initNutrition() {
         openAddMealModal(mi);
       });
     });
-
-    updateSummary();
   }
 
   function selectMeal(mi, oi, el) {
     document.querySelectorAll(`#nl-${mi} .meal-option`).forEach(o => o.classList.remove('selected'));
+    /* Toggle: clicking selected meal deselects it */
     selectedMeals[mi] = selectedMeals[mi] === oi ? null : oi;
     if (selectedMeals[mi] !== null) el.classList.add('selected');
+    /* STATE.selectMeal writes to nutrition.selectedMeals[phase][slotIdx] and saves to IDB */
     STATE.selectMeal(currentPhase, mi, selectedMeals[mi]);
     updateSummary();
   }
 
+  /* ══════════════════════════════════════════════════════════════
+     MACRO SUMMARY — two-column layout: targets | selected
+     Shown at the top of the page (always visible).
+  ══════════════════════════════════════════════════════════════ */
   function updateSummary() {
-    let cal=0, pro=0, carb=0, fat=0, cnt=0;
+    let cal = 0, pro = 0, carb = 0, fat = 0, cnt = 0;
     const allMeals = getMeals(currentPhase);
-    const ph = BASE_PHASES[currentPhase];
+    const ph       = BASE_PHASES[currentPhase];
     selectedMeals.forEach((oi, mi) => {
-      if (oi !== null) { const o = allMeals[mi][oi]; cal+=o.calories; pro+=o.protein; carb+=o.carbs; fat+=o.fats; cnt++; }
+      if (oi !== null && allMeals[mi][oi]) {
+        const o = allMeals[mi][oi];
+        cal += o.calories; pro += o.protein; carb += o.carbs; fat += o.fats;
+        cnt++;
+      }
     });
-    document.getElementById('sCal').textContent  = cal;
-    document.getElementById('sPro').textContent  = pro;
-    document.getElementById('sCarb').textContent = carb;
-    document.getElementById('sFat').textContent  = fat;
-    document.getElementById('bCal').style.width  = Math.min(100,(cal/ph.calories)*100)+'%';
-    document.getElementById('bPro').style.width  = Math.min(100,(pro/ph.protein) *100)+'%';
-    document.getElementById('bCarb').style.width = Math.min(100,(carb/ph.carbs)  *100)+'%';
-    document.getElementById('bFat').style.width  = Math.min(100,(fat/ph.fats)    *100)+'%';
+
+    const grid = document.getElementById('macroSummaryGrid');
+    if (!grid) return;
+
+    /* Two-column per macro: target | selected with fill bar */
+    const macros = [
+      { key:'cal',  label:'Calories', selected:cal,  target:ph.calories, unit:'kcal', color:'var(--accent3)' },
+      { key:'pro',  label:'Protein',  selected:pro,  target:ph.protein,  unit:'g',    color:'#f5a623' },
+      { key:'carb', label:'Carbs',    selected:carb, target:ph.carbs,    unit:'g',    color:'#42c4f5' },
+      { key:'fat',  label:'Fats',     selected:fat,  target:ph.fats,     unit:'g',    color:'#c97bff' },
+    ];
+
+    grid.innerHTML = macros.map(m => {
+      const pct   = m.target > 0 ? Math.min(100, (m.selected / m.target) * 100) : 0;
+      const over  = m.selected > m.target;
+      const exact = m.selected === m.target && cnt === 4;
+      return `
+        <div class="macro-summary-item">
+          <div class="macro-summary-label">${m.label}</div>
+          <div class="macro-summary-row">
+            <span class="macro-summary-sel" style="color:${m.color}">${m.selected}<span class="macro-summary-unit">${m.unit}</span></span>
+            <span class="macro-summary-target">/ ${m.target}${m.unit}</span>
+          </div>
+          <div class="macro-bar-track">
+            <div class="macro-bar-fill" style="width:${pct}%;background:${m.color};opacity:${over ? '1' : '0.7'}"></div>
+          </div>
+        </div>`;
+    }).join('');
+
+    /* Match badge */
     const badge = document.getElementById('matchBadge');
     badge.className = 'match-badge';
     if (cnt === 4) {
-      if (cal===ph.calories && pro===ph.protein && carb===ph.carbs && fat===ph.fats) {
+      if (cal === ph.calories && pro === ph.protein && carb === ph.carbs && fat === ph.fats) {
         badge.classList.add('perfect');
         badge.innerHTML = `<div class="checkmark"><svg viewBox="0 0 8 8" fill="none"><polyline points="1,4 3,6 7,2" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></div> Macros perfectly matched ✓`;
       } else {
         badge.classList.add('mismatch');
         const d = cal - ph.calories;
-        badge.innerHTML = `&#9888; ${d>0?'+':''}${d} kcal from target`;
+        badge.innerHTML = `&#9888; ${d > 0 ? '+' : ''}${d} kcal from target`;
       }
     }
-    ['Cal','Pro','Carb','Fat'].forEach(k => {
-      const el = document.getElementById('sm'+k);
-      const c  = k==='Cal'?cal:k==='Pro'?pro:k==='Carb'?carb:fat;
-      const t  = k==='Cal'?ph.calories:k==='Pro'?ph.protein:k==='Carb'?ph.carbs:ph.fats;
-      el.classList.remove('matched','over');
-      if (cnt === 4) el.classList.add(c===t?'matched':c>t?'over':'');
-    });
   }
 
   /* ── Phase selector ── */
   document.getElementById('phaseSelect').addEventListener('change', e => {
     currentPhase = e.target.value;
+    /* STATE.setNutritionPhase writes to nutrition.currentPhase and saves to IDB */
     STATE.setNutritionPhase(currentPhase);
     renderPhase();
   });
 
-  /* ── Whole Foods section ── */
-  const wfGrid = document.getElementById('wholeFoodsGrid');
+  /* ══════════════════════════════════════════════════════════════
+     WHOLE FOODS — compact multi-column grid (all categories in one card)
+  ══════════════════════════════════════════════════════════════ */
+  const wfCompact = document.getElementById('wholeFoodsCompact');
   (APP_DATA.wholeFoods || []).forEach(cat => {
-    const topItems  = cat.items.filter(i => i.top);
-    const restItems = cat.items.filter(i => !i.top);
-    wfGrid.innerHTML += `
-      <div class="card" style="margin-bottom:14px">
-        <div class="card-header" style="display:flex;align-items:center;gap:10px">
-          <span style="font-size:20px">${cat.icon}</span>
-          <div class="card-title">${cat.category}</div>
-        </div>
-        <div class="card-body" style="padding:8px 16px">
-          ${topItems.length ? `
-            <div style="font-family:'Rajdhani',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--warn);margin-bottom:6px">⭐ Top Picks</div>
-            ${topItems.map(item => wfItemHTML(item, true)).join('')}
-            ${restItems.length ? '<div style="height:1px;background:var(--border);margin:10px 0"></div>' : ''}` : ''}
-          ${restItems.map(item => wfItemHTML(item, false)).join('')}
-        </div>
-      </div>`;
+    const col = document.createElement('div');
+    col.className = 'wf-col';
+    col.innerHTML = `
+      <div class="wf-col-header">
+        <span style="font-size:16px">${cat.icon}</span>
+        <span>${cat.category}</span>
+      </div>
+      ${cat.items.map(item => `
+        <div class="wf-item${item.top ? ' wf-top' : ''}">
+          <div class="wf-item-name">${item.name}${item.top ? ' ⭐' : ''}</div>
+          <div class="wf-item-highlight">${item.highlight}</div>
+        </div>`).join('')}`;
+    wfCompact.appendChild(col);
   });
 
-  function wfItemHTML(item, isTop) {
-    return `
-      <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
-        <div style="flex:1">
-          <div style="font-size:13px;font-weight:${isTop?'600':'400'};color:${isTop?'var(--text)':'rgba(226,234,242,0.8)'};">${item.name}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">${item.highlight}</div>
-          <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">
-            ${item.tags.map(t=>`<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:rgba(255,255,255,0.05);color:var(--muted)">${t}</span>`).join('')}
-          </div>
-        </div>
-      </div>`;
-  }
-
-  /* ── Health Principles ── */
+  /* ── Nutrition principles ── */
   const prEl = document.getElementById('nutritionPrinciples');
   (APP_DATA.healthPrinciples?.nutrition || []).forEach(p => {
     prEl.innerHTML += `

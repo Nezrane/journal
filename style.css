@@ -2352,3 +2352,604 @@ select.form-input option { background: #141920; color: var(--text); }
   .form-row { grid-template-columns: 1fr; }
   .whole-foods-grid { grid-template-columns: 1fr; }
 }
+
+
+/* ══════════════════════════════════════════════════════════════════
+   24. DASHBOARD — STAT RINGS
+   SVG radial progress rings. Circumference = 2π × r = 2π × 32 ≈ 201.06.
+   The track circle is the grey background ring; the fill circle is the
+   coloured progress arc. rotate(-90deg) makes the arc start at 12 o'clock.
+   For invert metrics (body fat), the JS sets pct = goal/current so that
+   reaching the goal = 100% fill.
+════════════════════════════════════════════════════════════════ */
+.stat-rings-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.stat-ring-card {
+  flex: 1;
+  min-width: 120px;
+  max-width: 160px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 10px 12px;
+  transition: border-color 0.2s, transform 0.18s;
+}
+
+.stat-ring-card:hover {
+  border-color: rgba(255,255,255,0.15);
+  transform: translateY(-2px);
+}
+
+.stat-ring-wrap {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
+  margin-bottom: 10px;
+}
+
+.stat-ring-svg {
+  width: 80px;
+  height: 80px;
+  transform: rotate(-90deg); /* Start arc at 12 o'clock */
+}
+
+.stat-ring-track {
+  fill: none;
+  stroke: rgba(255,255,255,0.06);
+  stroke-width: 7;
+}
+
+.stat-ring-fill {
+  fill: none;
+  stroke-width: 7;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.6s cubic-bezier(0.22,1,0.36,1);
+}
+
+.stat-ring-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.stat-ring-value {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.stat-ring-unit {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 9px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+
+.stat-ring-label {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-align: center;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+
+.stat-ring-note {
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.3;
+}
+
+@media (max-width: 768px) {
+  .stat-rings-row { gap: 8px; }
+  .stat-ring-card { min-width: 90px; padding: 12px 6px 10px; }
+  .stat-ring-wrap, .stat-ring-svg { width: 64px; height: 64px; }
+  .stat-ring-value { font-size: 13px; }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   25. NUTRITION — MACRO SUMMARY GRID
+   Pinned at top of nutrition page. 4-column grid, one per macro.
+   Each item shows: label | selected value | fill bar | target.
+════════════════════════════════════════════════════════════════ */
+.macro-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.macro-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.macro-summary-label {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.macro-summary-row {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.macro-summary-sel {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.macro-summary-unit {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 400;
+  margin-left: 1px;
+}
+
+.macro-summary-target {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: auto;
+}
+
+.macro-bar-track {
+  height: 4px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.macro-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.45s cubic-bezier(0.22,1,0.36,1);
+  max-width: 100%;
+}
+
+@media (max-width: 768px) {
+  .macro-summary-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 480px) {
+  .macro-summary-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .macro-summary-sel  { font-size: 18px; }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   26. NUTRITION — MEAL DELETE BUTTON
+   Only visible on custom (user-added) meal options.
+   Tapping × permanently removes the meal from STATE.customMeals → IDB.
+════════════════════════════════════════════════════════════════ */
+.meal-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,107,107,0.35);
+  background: rgba(255,107,107,0.08);
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  padding: 0;
+}
+
+.meal-delete-btn:hover {
+  background: rgba(255,107,107,0.2);
+  border-color: var(--danger);
+  transform: scale(1.1);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   27. NUTRITION — WHOLE FOODS COMPACT GRID
+   All whole-food categories in one card with columns side by side
+   instead of separate cards per category. Mobile: single column.
+════════════════════════════════════════════════════════════════ */
+.whole-foods-compact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.wf-col {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.wf-col-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--accent);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2px;
+}
+
+.wf-item {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  transition: border-color 0.15s;
+}
+
+.wf-item.wf-top {
+  border-color: rgba(245,200,66,0.3);
+  background: rgba(245,200,66,0.04);
+}
+
+.wf-item:hover { border-color: rgba(255,255,255,0.12); }
+
+.wf-item-name {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 1px;
+}
+
+.wf-top .wf-item-name { color: #f5c842; }
+
+.wf-item-highlight {
+  font-size: 10.5px;
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+@media (max-width: 600px) {
+  .whole-foods-compact-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 400px) {
+  .whole-foods-compact-grid { grid-template-columns: 1fr; }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   28. WORKOUT — LOGBOOK / SESSION LOG FORM
+   Used in the Today tab "Log Session" card and the Logbook display tab.
+   Each exercise gets a row with one or more set rows (reps × weight).
+   "+ Set" adds a new set row; "×" removes it.
+════════════════════════════════════════════════════════════════ */
+.logbook-ex-row {
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  margin-bottom: 4px;
+}
+
+.logbook-ex-row:last-child { border-bottom: none; margin-bottom: 0; }
+
+.logbook-ex-name {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--accent3);
+  margin-bottom: 6px;
+}
+
+.logbook-sets {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 6px;
+}
+
+.logbook-set-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.logbook-set-label {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  min-width: 40px;
+  flex-shrink: 0;
+}
+
+.logbook-add-set {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1.5px solid rgba(255,107,53,0.3);
+  background: rgba(255,107,53,0.06);
+  color: var(--accent);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.logbook-add-set:hover {
+  border-color: var(--accent);
+  background: rgba(255,107,53,0.12);
+}
+
+.logbook-rm-set {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,107,107,0.3);
+  background: rgba(255,107,107,0.06);
+  color: var(--danger);
+  font-size: 14px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  padding: 0;
+}
+
+.logbook-rm-set:hover {
+  background: rgba(255,107,107,0.18);
+  border-color: var(--danger);
+}
+
+/* Chip shown in the Logbook display tab for each recorded set */
+.logbook-set-chip {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: rgba(255,107,53,0.08);
+  border: 1px solid rgba(255,107,53,0.2);
+  color: var(--accent3);
+  white-space: nowrap;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   29. WORKOUT — MACRO CALCULATOR
+   Slider + goal/activity toggles + calculated results display.
+   Uses CSS custom properties --mc (fill %) and --col (color) per macro.
+════════════════════════════════════════════════════════════════ */
+.macro-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.08);
+  outline: none;
+  cursor: pointer;
+}
+
+.macro-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid rgba(255,255,255,0.2);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  transition: transform 0.15s;
+}
+
+.macro-slider::-webkit-slider-thumb:hover { transform: scale(1.15); }
+
+.macro-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid rgba(255,255,255,0.2);
+  cursor: pointer;
+}
+
+/* Result display area */
+.macro-calc-results {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.macro-calc-main {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.macro-calc-calories {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.macro-calc-cal-val {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 48px;
+  font-weight: 700;
+  color: var(--accent3);
+  line-height: 1;
+}
+
+.macro-calc-cal-unit {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.macro-calc-breakdown {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.macro-calc-macro {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.macro-calc-bar {
+  height: 4px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.macro-calc-bar-fill {
+  height: 100%;
+  width: var(--mc, 0%);
+  background: var(--col, var(--accent));
+  border-radius: 4px;
+  transition: width 0.45s cubic-bezier(0.22,1,0.36,1);
+}
+
+.macro-calc-val {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--col, var(--accent));
+  line-height: 1;
+}
+
+.macro-calc-lbl {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+@media (max-width: 480px) {
+  .macro-calc-breakdown { grid-template-columns: 1fr 1fr; }
+  .macro-calc-cal-val   { font-size: 38px; }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   30. WORKOUT — PROGRESS PICTURES STRIP
+   Horizontally scrollable strip of progress photo cards.
+   Images stored as base64 data URLs in STATE.data.workout.progressPics[].
+   Each card: image (fixed height) + date + note + remove button.
+════════════════════════════════════════════════════════════════ */
+.progress-pics-strip {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+}
+
+.progress-pics-strip::-webkit-scrollbar       { height: 4px; }
+.progress-pics-strip::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+.progress-pic-card {
+  flex-shrink: 0;
+  width: 200px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  scroll-snap-align: start;
+  transition: border-color 0.2s;
+}
+
+.progress-pic-card:hover { border-color: rgba(255,107,53,0.3); }
+
+.progress-pic-img {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  display: block;
+}
+
+.progress-pic-meta {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.progress-pic-date {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+}
+
+.progress-pic-note {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.progress-pic-del {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,107,107,0.25);
+  background: rgba(255,107,107,0.06);
+  color: var(--danger);
+  cursor: pointer;
+  margin-top: 4px;
+  transition: all 0.15s;
+  align-self: flex-start;
+}
+
+.progress-pic-del:hover {
+  background: rgba(255,107,107,0.15);
+  border-color: var(--danger);
+}

@@ -22,11 +22,15 @@ window.APP_DATA = {
 
   /* ── Dashboard ───────────────────────────────────────────────── */
   dashboard: {
+    /* current / goal are numeric → drive radial ring fill in dashboard.
+       invert:true = lower is better (body fat — goal < current).
+       color = ring stroke colour. value = display string (can differ from current). */
     stats: [
-      { label:'Body Weight', value:'176', unit:'lbs', note:'Goal: 200 lbs' },
-      { label:'Body Fat',    value:'16',  unit:'%',   note:'Goal: 15%' },
-      { label:'Envosta MRR', value:'$0',  unit:'',    note:'Goal: $50K/mo' },
-      { label:'Songs Ready', value:'8',   unit:'',    note:'Setlist: 7 songs' },
+      { label:'Body Weight', value:'176',    unit:'lbs', note:'Goal: 200 lbs',    current:176,   goal:200,    color:'#ff6b35', invert:false },
+      { label:'Body Fat',    value:'16',     unit:'%',   note:'Goal: 15%',         current:16,    goal:15,     color:'#f5c842', invert:true  },
+      { label:'Envosta MRR', value:'$0',     unit:'',    note:'Goal: $50K/mo',     current:0,     goal:50000,  color:'#7c6af7', invert:false },
+      { label:'Songs Ready', value:'8',      unit:'',    note:'Target: 10 ready',  current:8,     goal:10,     color:'#f06292', invert:false },
+      { label:'Net Worth',   value:'$12.5K', unit:'',    note:'Goal: $100K',       current:12500, goal:100000, color:'#3ddc6e', invert:false },
     ],
     morningHabits: [
       'Wake up before 9am',
