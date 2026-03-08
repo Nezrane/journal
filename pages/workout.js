@@ -77,7 +77,14 @@ window.registerPage('workout', function initWorkout() {
     }
   }
 
-  const PHASE_LIMITS = { recovery: 5, ramping: 7 };
+
+  /* 4 clickable stages derived from programLogic weekRules */
+  const STAGES = [
+    { phase: 'recovery', label: 'Technique',  sub: '1 set · RPE ~6',       weekLabel: 'Weeks 1–2',  weekStart: 1, weekCount: 2 },
+    { phase: 'recovery', label: 'Volume',     sub: '2 sets · RPE ~7–8',     weekLabel: 'Weeks 3–5',  weekStart: 3, weekCount: 3 },
+    { phase: 'ramping',  label: 'Intro',      sub: '1 set · new movements', weekLabel: 'Week 6',     weekStart: 6, weekCount: 1 },
+    { phase: 'ramping',  label: 'Overload',   sub: '2–3 sets · to failure', weekLabel: 'Weeks 7–12', weekStart: 7, weekCount: 6 },
+  ];
 
   /* Full 7-day schedule used for day tabs — shows both Rest days */
   const SCHEDULE = ['Upper', 'Lower', 'Rest', 'Pull', 'Push', 'Legs', 'Rest'];
@@ -89,27 +96,16 @@ window.registerPage('workout', function initWorkout() {
   /* ── Build page shell ── */
   const inner = document.getElementById('workout-inner');
   inner.innerHTML = `
-    ${buildPageHeader('Jeff Nippard PPL', 'Workout', 'Program',
+    ${buildPageHeader('JEFF NIPPARD UL+PPL', 'Workout', 'Program',
       'Recovery (Wks 1–5) → Ramping (Wks 6–12). Tap any exercise for notes & swaps.'
     )}
 
     <div class="day-tabs" id="mainWorkoutTabs" style="margin-bottom:8px;flex-wrap:wrap">
-      <button class="day-tab active" data-wtab="today">Today</button>
-      <button class="day-tab"        data-wtab="movement">Movement</button>
-      <button class="day-tab"        data-wtab="logbook">Logbook</button>
-      <button class="day-tab"        data-wtab="pics">Progress Pics</button>
-      <button class="day-tab"        data-wtab="principles">Principles</button>
+      <button class="day-tab active" data-wtab="today">Routine</button>
+      <button class="day-tab"        data-wtab="logbook">Progress</button>
     </div>
 
     <div id="workoutTabPanel"></div>`;
-
-  /* ── Phase toggle ── */
-  function setPhase(name) {
-    currentPhaseName = name;
-    currentPhaseData = name === 'ramping' ? RAMPING : RECOVERY;
-    STATE.setWorkoutPhase(name);
-    if (activeTab === 'today') renderToday();
-  }
 
   /* ── Tab routing ── */
   let activeTab = 'today';
@@ -125,11 +121,8 @@ window.registerPage('workout', function initWorkout() {
   function renderTab() {
     const panel = document.getElementById('workoutTabPanel');
     switch (activeTab) {
-      case 'today':      renderToday();               break;
-      case 'movement':   renderMovement(panel);        break;
-      case 'logbook':    renderLogbook(panel);         break;
-      case 'pics':       renderProgressPics(panel);    break;
-      case 'principles': renderPrinciples(panel);      break;
+      case 'today':   renderToday();         break;
+      case 'logbook': renderLogbook(panel);  break;
     }
   }
 
@@ -141,138 +134,85 @@ window.registerPage('workout', function initWorkout() {
      "Log Session" form at the bottom advances the schedule → IDB.
   ══════════════════════════════════════════════════════════════ */
   function renderToday() {
-    const panel = document.getElementById('workoutTabPanel');
-    currentDay = ws.schedule[ws.currentDayIndex % ws.schedule.length];
-    const dayData     = currentDay === 'Rest' ? REST_DAY : (currentPhaseData[currentDay] || { focus:'', exercises:[] });
-    const phaseName   = currentPhaseName === 'recovery' ? 'Recovery Phase' : 'Ramping Phase';
-    const cycleLimit  = PHASE_LIMITS[currentPhaseName];
-    const cyclesDone  = ws.cycleCount || 0;
-    const canAdvance  = cyclesDone >= cycleLimit;
-    const nextPhase   = currentPhaseName === 'recovery' ? 'Ramping' : 'Recovery';
+    const panel   = document.getElementById('workoutTabPanel');
+    currentDay    = ws.schedule[ws.currentDayIndex % ws.schedule.length];
+    const weekNum = ws.weekNumber || 1;
+
+    /* Determine active stage */
+    const activeStageIdx = STAGES.findIndex(s =>
+      s.phase === currentPhaseName && weekNum >= s.weekStart && weekNum < s.weekStart + s.weekCount
+    );
+    const activeStage = STAGES[activeStageIdx] ?? STAGES[0];
+
+    /* Build each segment */
+    function stageSegHTML(s, i) {
+      const isRecovery = s.phase === 'recovery';
+      const accent     = isRecovery ? 'var(--accent)' : 'var(--accent3)';
+      const isPast     = i < activeStageIdx;
+      const isCurrent  = i === activeStageIdx;
+      const weekInStage   = isCurrent ? Math.max(0, weekNum - s.weekStart) : 0;
+      const fillPct       = isPast ? 100 : isCurrent ? Math.round((weekInStage / s.weekCount) * 100) : 0;
+      const radius = i === 0 ? '7px 0 0 7px' : i === STAGES.length - 1 ? '0 7px 7px 0' : '0';
+      const border = isCurrent ? `2px solid ${accent}` : '2px solid transparent';
+      return `
+        <div data-stageidx="${i}" style="flex:${s.weekCount};position:relative;cursor:pointer;border-radius:${radius};overflow:hidden;background:rgba(255,255,255,0.04);border:${border};padding:8px 10px;min-width:0">
+          <div style="position:absolute;inset:0;background:${accent};opacity:0.13;width:${fillPct}%;pointer-events:none"></div>
+        </div>`;
+    }
 
     panel.innerHTML = `
-      <!-- Phase status card -->
+      <!-- Stage progress card -->
       <div class="card" style="margin-bottom:16px">
-        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
           <div>
-            <div class="card-title">${phaseName} — ${currentPhaseName === 'recovery' ? 'Weeks 1–5' : 'Weeks 6–12'}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px">
-              Week ${ws.weekNumber || 1} · Cycle ${cyclesDone + 1} of ${cycleLimit}
-            </div>
+            <div class="card-title">${activeStage.label} <span style="font-weight:400;color:var(--muted)">· ${activeStage.weekLabel}</span></div>
           </div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            ${canAdvance ? `
-              <div style="font-size:11px;color:var(--accent3);margin-right:4px">${cyclesDone}/${cycleLimit} cycles ✓ Phase complete!</div>
-              <button class="day-tab active" id="advancePhaseBtn" style="padding:7px 16px;font-size:12px">
-                → Switch to ${nextPhase} Phase
-              </button>` : `
-              <span class="badge badge-warn">${currentPhaseName === 'recovery' ? 'Technique Focus' : 'Progressive Overload'}</span>`}
-          </div>
+          <span class="badge ${activeStage.phase === 'recovery' ? 'badge-accent' : 'badge-warn'}">${activeStage.phase === 'recovery' ? 'Recovery Phase' : 'Ramping Phase'}</span>
         </div>
-        <!-- Cycle progress bar -->
         <div class="card-body" style="padding:10px 16px 14px">
-          <div style="font-size:10px;color:var(--muted);margin-bottom:5px">Cycles completed: ${cyclesDone} / ${cycleLimit}</div>
-          <div class="progress-track"><div class="progress-fill" style="width:${Math.min(100, (cyclesDone/cycleLimit)*100)}%"></div></div>
-          <!-- Phase toggle — lives inside the schedule card -->
-          <div class="phase-toggle" style="margin-top:12px">
-            <button class="phase-btn${currentPhaseName === 'recovery' ? ' active' : ''}" id="phaseRecoveryBtn">Recovery</button>
-            <button class="phase-btn${currentPhaseName === 'ramping'  ? ' active' : ''}" id="phaseRampingBtn">Ramping</button>
+          <!-- Segmented stage bar -->
+          <div style="display:flex;gap:2px" id="stageBar">
+            ${STAGES.map((s, i) => stageSegHTML(s, i)).join('')}
           </div>
-          <!-- Day tabs — full 7-step schedule so both Rest days are shown -->
-          <div class="day-tabs" style="margin-top:10px" id="dayTabs"></div>
+          <!-- Phase group labels -->
+          <div style="display:flex;margin-top:4px">
+            <div style="flex:5;font-size:9px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent)">Recovery</div>
+            <div style="flex:7;font-size:9px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent3);text-align:right">Ramping</div>
+          </div>
+          <!-- Day tabs -->
+          <div class="day-tabs" style="margin-top:12px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none" id="dayTabs"></div>
         </div>
       </div>
 
       <!-- Exercise card -->
       <div id="workoutContent"></div>
 
-      <!-- Session complete -->
-      ${currentDay !== 'Rest' ? `
-        <div class="card" style="margin-top:16px">
-          <div class="card-body" style="padding:16px;text-align:center">
-            <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
-              Log sets via each exercise above, then mark the session done to advance the schedule.
-            </div>
-            <textarea class="venture-notes-input" id="workoutNotes" placeholder="Session notes — how it felt, what to adjust…" style="height:56px;margin-bottom:12px"></textarea>
-            <button class="phase-btn active" id="logWorkoutBtn" style="padding:10px 24px;font-size:14px">✓ Complete ${currentDay} Session →</button>
-          </div>
-        </div>` : `
-        <div class="card" style="margin-top:16px">
-          <div class="card-body" style="padding:20px;text-align:center">
-            <div style="font-size:28px;margin-bottom:8px">😴</div>
-            <div style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;margin-bottom:4px">Rest Day</div>
-            <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Active recovery only — walk, stretch, foam roll.</div>
-            <button class="day-tab active" id="logRestBtn" style="padding:8px 20px">Mark Rest Day Complete →</button>
-          </div>
-        </div>`}
+      <div class="section-label" style="margin-top:18px">Training Principles</div>
+      <div class="grid-2" id="principlesBody"></div>`;
 
-      <!-- ── Stretching — collapsible section in Today tab ── -->
-      <div class="card" style="margin-top:10px" id="stretchSection">
-        <div class="card-header" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between" id="stretchToggle">
-          <div class="card-title">Stretching</div>
-          <span style="font-size:18px;color:var(--muted);transition:transform 0.2s" id="stretchArrow">▾</span>
-        </div>
-        <div id="stretchBody" style="display:none"></div>
-      </div>`;
-
-    /* Phase advance button */
-    inner.querySelector('#advancePhaseBtn')?.addEventListener('click', () => {
-      if (!confirm(`Switch from ${currentPhaseName} to ${nextPhase.toLowerCase()} phase? This resets your cycle count.`)) return;
-      STATE.advancePhase();
-      currentPhaseName = ws.currentPhase;
-      currentPhaseData = currentPhaseName === 'ramping' ? RAMPING : RECOVERY;
+    /* Stage bar — clicking any segment jumps to that stage */
+    function jumpToStage(idx) {
+      const s = STAGES[idx];
+      ws.weekNumber    = s.weekStart;
+      currentPhaseName = s.phase;
+      currentPhaseData = s.phase === 'ramping' ? RAMPING : RECOVERY;
+      STATE.setWorkoutPhase(s.phase);
       renderToday();
+    }
+    panel.querySelectorAll('#stageBar [data-stageidx]').forEach(el => {
+      el.addEventListener('click', () => jumpToStage(Number(el.dataset.stageidx)));
     });
-
-    /* Phase toggle buttons (live inside the re-rendered card) */
-    panel.querySelector('#phaseRecoveryBtn')?.addEventListener('click', () => setPhase('recovery'));
-    panel.querySelector('#phaseRampingBtn')?.addEventListener('click',  () => setPhase('ramping'));
 
     renderDayTabs();
     renderDayContent();
 
-    /* Rest day log button */
-    inner.querySelector('#logRestBtn')?.addEventListener('click', () => {
-      STATE.logWorkout(currentDay, currentPhaseName, [], '');
-      renderToday();
-    });
-
-    /* Log session button — advances schedule; per-exercise sets are logged via the modal */
-    inner.querySelector('#logWorkoutBtn')?.addEventListener('click', () => {
-      const notes = (inner.querySelector('#workoutNotes')?.value || '').trim();
-      STATE.logWorkout(currentDay, currentPhaseName, [], notes);
-      renderToday();
-    });
-
-    /* ── Stretching collapsible ── */
-    const stretchToggle = panel.querySelector('#stretchToggle');
-    const stretchBody   = panel.querySelector('#stretchBody');
-    const stretchArrow  = panel.querySelector('#stretchArrow');
-    const sr            = APP_DATA.stretchingRoutine || {};
-
-    function stretchCard(s) {
-      return `
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
-          <div style="flex:1">
-            <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;margin-bottom:2px">${s.name}</div>
-            <div style="font-size:11.5px;color:rgba(226,234,242,0.65);line-height:1.5">${s.instruction}</div>
-          </div>
-          <span class="badge badge-muted" style="margin-left:10px;flex-shrink:0">${s.duration}</span>
-        </div>`;
-    }
-
-    stretchBody.innerHTML = `
-      <div class="card-body" style="padding:4px 16px">
-        <div style="font-size:11px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);padding:8px 0 4px">Morning Activation</div>
-        ${(sr.morning || []).map(stretchCard).join('')}
-        <div style="font-size:11px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);padding:12px 0 4px">Post-Workout Cooldown</div>
-        ${(sr.postWorkout || []).map(stretchCard).join('')}
-      </div>`;
-    stretchToggle.addEventListener('click', () => {
-      const open = stretchBody.style.display !== 'none';
-      stretchBody.style.display = open ? 'none' : 'block';
-      stretchArrow.style.transform = open ? '' : 'rotate(180deg)';
-    });
+    /* ── Principles (inline, no card) ── */
+    panel.querySelector('#principlesBody').innerHTML =
+      (APP_DATA.healthPrinciples?.workout || []).map(p => `
+        <div style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--accent);margin-bottom:4px">${p.title}</div>
+          <div style="font-size:12px;color:rgba(226,234,242,0.72);line-height:1.6">${p.body}</div>
+        </div>`).join('');
   }
 
   /* Day tabs — uses the full 7-step schedule so BOTH Rest days appear.
@@ -282,7 +222,7 @@ window.registerPage('workout', function initWorkout() {
     const tabs = document.getElementById('dayTabs');
     if (!tabs) return;
     tabs.innerHTML = '';
-    SCHEDULE.forEach((day, idx) => {
+    SCHEDULE.forEach(day => {
       const btn = document.createElement('button');
       /* Both Rest slots highlight when currentDay is 'Rest' — they show the same content */
       btn.className = 'day-tab' + (currentDay === day ? ' active' : '');
@@ -300,8 +240,10 @@ window.registerPage('workout', function initWorkout() {
   function renderDayContent() {
     const content = document.getElementById('workoutContent');
     if (!content) return;
-    const dayData   = currentDay === 'Rest' ? REST_DAY : (currentPhaseData[currentDay] || { focus:'', exercises:[] });
+const dayData   = currentDay === 'Rest' ? REST_DAY : (currentPhaseData[currentDay] || { focus:'', exercises:[] });
     const phaseName = currentPhaseName === 'recovery' ? 'Recovery Phase' : 'Ramping Phase';
+
+    const sr = APP_DATA.stretchingRoutine || {};
 
     content.innerHTML = `
       <div class="workout-card">
@@ -313,7 +255,63 @@ window.registerPage('workout', function initWorkout() {
           </div>
           <span class="badge badge-accent">${dayData.exercises.length} exercises</span>
         </div>
+
+        ${currentDay !== 'Rest' ? `
+        <!-- Warmup section -->
+        <div style="border-bottom:1px solid rgba(255,255,255,0.07)">
+          <div id="warmupToggle" style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;cursor:pointer">
+            <div style="font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent)">Warmup</div>
+            <span style="font-size:16px;color:var(--muted);transition:transform 0.2s" id="warmupArrow">▾</span>
+          </div>
+          <div id="warmupBody" style="display:none;padding:0 16px 10px">
+            ${(sr.morning || []).map(s => `
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+                <div style="flex:1">
+                  <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;margin-bottom:2px">${s.name}</div>
+                  <div style="font-size:11.5px;color:rgba(226,234,242,0.65);line-height:1.5">${s.instruction}</div>
+                </div>
+                <span class="badge badge-muted" style="margin-left:10px;flex-shrink:0">${s.duration}</span>
+              </div>`).join('')}
+          </div>
+        </div>` : ''}
+
+        <!-- Routine section -->
+        ${currentDay !== 'Rest' ? `
+        <div style="border-bottom:1px solid rgba(255,255,255,0.07);padding:10px 16px 4px">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:6px">Routine</div>
+        </div>` : ''}
         <div class="exercise-list" id="exerciseList"></div>
+
+        ${currentDay !== 'Rest' ? `
+        <!-- Stretches section -->
+        <div style="border-top:1px solid rgba(255,255,255,0.07)">
+          <div id="stretchesToggle" style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;cursor:pointer">
+            <div style="font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent)">Stretches</div>
+            <span style="font-size:16px;color:var(--muted);transition:transform 0.2s" id="stretchesArrow">▾</span>
+          </div>
+          <div id="stretchesBody" style="display:none;padding:0 16px 10px">
+            ${(sr.postWorkout || []).map(s => `
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+                <div style="flex:1">
+                  <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;margin-bottom:2px">${s.name}</div>
+                  <div style="font-size:11.5px;color:rgba(226,234,242,0.65);line-height:1.5">${s.instruction}</div>
+                </div>
+                <span class="badge badge-muted" style="margin-left:10px;flex-shrink:0">${s.duration}</span>
+              </div>`).join('')}
+          </div>
+        </div>` : ''}
+
+        ${currentDay !== 'Rest' ? `
+          <div style="border-top:1px solid rgba(255,255,255,0.07);padding:14px 16px 16px">
+            <textarea class="venture-notes-input" id="workoutNotes" placeholder="Session notes — how it felt, what to adjust…" style="height:52px;margin-bottom:10px"></textarea>
+            <button class="phase-btn active" id="logWorkoutBtn" style="width:100%;padding:11px;font-size:14px">✓ Complete ${currentDay} Session →</button>
+          </div>` : `
+          <div style="border-top:1px solid rgba(255,255,255,0.07);padding:16px;text-align:center">
+            <div style="font-size:28px;margin-bottom:8px">😴</div>
+            <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;margin-bottom:4px">Rest Day</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Active recovery only — walk, stretch, foam roll.</div>
+            <button class="day-tab active" id="logRestBtn" style="padding:8px 20px">Mark Rest Day Complete →</button>
+          </div>`}
       </div>`;
 
     const list = document.getElementById('exerciseList');
@@ -336,7 +334,7 @@ window.registerPage('workout', function initWorkout() {
             ${ex.notes ? `<div class="ex-notes">${ex.notes}</div>` : ''}
           </div>`;
       } else {
-        const { earlyRPE, lastRPE } = getRPEForWeek(ex, currentPhaseName, weekNum);
+        const { lastRPE } = getRPEForWeek(ex, currentPhaseName, weekNum);
         const sets = getSets(ex, currentPhaseName, weekNum);
         const rule = getWeekRule(currentPhaseName, weekNum);
         row.innerHTML = `
@@ -356,13 +354,41 @@ window.registerPage('workout', function initWorkout() {
       row.addEventListener('click', () => openExModal(ex, i + 1));
       list.appendChild(row);
     });
+
+    content.querySelector('#logWorkoutBtn')?.addEventListener('click', () => {
+      const notes = (content.querySelector('#workoutNotes')?.value || '').trim();
+      STATE.logWorkout(currentDay, currentPhaseName, [], notes);
+      renderToday();
+    });
+    content.querySelector('#logRestBtn')?.addEventListener('click', () => {
+      STATE.logWorkout(currentDay, currentPhaseName, [], '');
+      renderToday();
+    });
+
+    /* Warmup toggle */
+    content.querySelector('#warmupToggle')?.addEventListener('click', () => {
+      const body  = content.querySelector('#warmupBody');
+      const arrow = content.querySelector('#warmupArrow');
+      const open  = body.style.display !== 'none';
+      body.style.display = open ? 'none' : 'block';
+      arrow.style.transform = open ? '' : 'rotate(180deg)';
+    });
+
+    /* Stretches toggle */
+    content.querySelector('#stretchesToggle')?.addEventListener('click', () => {
+      const body  = content.querySelector('#stretchesBody');
+      const arrow = content.querySelector('#stretchesArrow');
+      const open  = body.style.display !== 'none';
+      body.style.display = open ? 'none' : 'block';
+      arrow.style.transform = open ? '' : 'rotate(180deg)';
+    });
   }
 
   /* ── Exercise modal ── */
   const exOverlay = document.getElementById('exModalOverlay');
   const exModal   = document.querySelector('#page-workout .ex-modal');
 
-  function openExModal(ex, num) {
+  function openExModal(ex) {
     const weekNum = ws.weekNumber || 1;
     const isRestDay = currentDay === 'Rest';
 
@@ -549,91 +575,6 @@ window.registerPage('workout', function initWorkout() {
   setupSwipeDismiss(exModal, closeExModal);
 
   /* ══════════════════════════════════════════════════════════════
-     MOVEMENT TAB — morning calisthenics skill practice
-  ══════════════════════════════════════════════════════════════ */
-  function renderMovement(panel) {
-    const SKILLS = [
-      {
-        name: 'Pull-Ups',
-        goal: 'Max reps / weighted',
-        cue: 'Dead hang start. Scapular retraction before pulling. Chin clears bar.',
-        sets: '3–5 sets',
-        rest: '2–3 min',
-        progression: 'Add reps → add band resistance → add weight vest',
-      },
-      {
-        name: 'Pike Push-Ups',
-        goal: 'Shoulder strength & handstand press prep',
-        cue: 'Hips high, head through on descent. Elbows track forward.',
-        sets: '3–4 sets × 8–15 reps',
-        rest: '90 sec',
-        progression: 'Elevate feet → decline → wall handstand push-up negative',
-      },
-      {
-        name: 'Handstand Practice',
-        goal: 'Balance & overhead compression',
-        cue: 'Finger-pad pressure controls balance. Hollow body, slight shoulder shrug.',
-        sets: '10–15 min skill block',
-        rest: 'As needed between attempts',
-        progression: 'Wall kick-up → wall freestanding → freestanding hold → walk',
-      },
-      {
-        name: 'Push-Ups',
-        goal: 'Chest & tricep volume',
-        cue: 'Elbows ~45°. Full ROM — chest to floor, lock out top.',
-        sets: '3–4 sets',
-        rest: '60–90 sec',
-        progression: 'Standard → archer → weighted vest → ring push-up',
-      },
-      {
-        name: 'L-Sit',
-        goal: 'Hip flexor & core compression',
-        cue: 'Straight legs, toes pointed. Depress shoulders hard. Push floor away.',
-        sets: '5 × max hold',
-        rest: '60 sec',
-        progression: 'Tuck → one leg extended → full L-sit → V-sit',
-      },
-      {
-        name: 'Planche Lean',
-        goal: 'Straight arm strength & planche prep',
-        cue: 'Lean forward until weight shifts to wrists. Posterior pelvic tilt. Full depression.',
-        sets: '4–5 × 10–20 sec',
-        rest: '90 sec',
-        progression: 'Lean → tuck planche → advanced tuck → straddle → full planche',
-      },
-    ];
-
-    panel.innerHTML = `
-      <div class="section-label">Morning Movement</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">
-        Calisthenics skill work — do this before your PPL session or as a standalone morning block.
-      </div>
-      ${SKILLS.map(s => `
-        <div class="card" style="margin-bottom:12px">
-          <div class="card-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
-            <div>
-              <div class="card-title">${s.name}</div>
-              <div style="font-size:11px;color:var(--accent);margin-top:2px">${s.goal}</div>
-            </div>
-            <div style="text-align:right;flex-shrink:0">
-              <span class="badge badge-accent">${s.sets}</span>
-              <span class="badge badge-muted" style="margin-left:5px">Rest ${s.rest}</span>
-            </div>
-          </div>
-          <div class="card-body" style="padding:10px 16px 14px;display:flex;flex-direction:column;gap:10px">
-            <div>
-              <div style="font-size:10px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:4px">Cue</div>
-              <div style="font-size:12px;color:rgba(226,234,242,0.8);line-height:1.6">${s.cue}</div>
-            </div>
-            <div>
-              <div style="font-size:10px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Progression</div>
-              <div style="font-size:11.5px;color:var(--muted);line-height:1.5">${s.progression}</div>
-            </div>
-          </div>
-        </div>`).join('')}`;
-  }
-
-  /* ══════════════════════════════════════════════════════════════
      LOGBOOK TAB
      Top: current stats table — most recent weight × reps per exercise.
      Bottom: session history from ws.log (date, day, notes).
@@ -643,8 +584,8 @@ window.registerPage('workout', function initWorkout() {
     const logbook = (ws.logbook || []).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
     const log     = (ws.log     || []).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
 
-    /* Most-recent weight × reps per exercise — first occurrence in date-desc order wins */
-    const latest = new Map(); /* name → { weight, reps, date, totalSets } */
+    /* Most-recent weight × reps per exercise */
+    const latest = new Map();
     logbook.forEach(entry => {
       (entry.exercises || []).forEach(ex => {
         const sets = (ex.sets || []).filter(s => s.reps || s.weight);
@@ -657,64 +598,176 @@ window.registerPage('workout', function initWorkout() {
       });
     });
 
-    const fmtDate = d => new Date(d).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+    const fmtDate  = d => new Date(d).toLocaleDateString('en-US', { month:'short', day:'numeric' });
+    const fmtFull  = d => new Date(d).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+    const STATS    = APP_DATA.dashboard.stats;
+    const bodyW    = STATS.find(s => s.label === 'Body Weight') || STATS[0];
+    const bodyF    = STATS.find(s => s.label === 'Body Fat')    || STATS[1];
+
+    const bodyPct = s => s.invert
+      ? (s.current <= s.goal ? 100 : Math.round((s.goal / s.current) * 100))
+      : (s.goal > 0 ? Math.min(100, Math.round((s.current / s.goal) * 100)) : 0);
 
     panel.innerHTML = `
-      <div class="section-label">Current Stats</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
-        Most recent logged weight &amp; reps per exercise — updates as you log sets via the exercise modals.
+
+      <!-- ══ Body Metrics hero card ══ -->
+      <div class="card" style="margin-bottom:16px;overflow:hidden">
+        <div style="padding:14px 20px 10px;border-bottom:1px solid var(--border)">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted)">Body Metrics</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+
+          <!-- Weight -->
+          <div style="padding:16px 20px;border-right:1px solid var(--border)">
+            <div style="font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Body Weight</div>
+            <div style="font-family:'Rajdhani',sans-serif;font-size:40px;font-weight:700;color:${bodyW.color};line-height:1">${bodyW.value}<span style="font-size:14px;color:var(--muted);margin-left:3px">${bodyW.unit}</span></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;margin-bottom:10px">Goal · 200 lbs</div>
+            <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden">
+              <div style="height:100%;width:${bodyPct(bodyW)}%;background:${bodyW.color};border-radius:2px"></div>
+            </div>
+            <div style="font-size:10px;color:var(--muted);margin-top:4px">${bodyPct(bodyW)}% to goal</div>
+          </div>
+
+          <!-- Body Fat -->
+          <div style="padding:16px 20px">
+            <div style="font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Body Fat</div>
+            <div style="font-family:'Rajdhani',sans-serif;font-size:40px;font-weight:700;color:${bodyF.color};line-height:1">${bodyF.value}<span style="font-size:14px;color:var(--muted);margin-left:3px">${bodyF.unit}</span></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;margin-bottom:10px">Goal · 15%</div>
+            <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden">
+              <div style="height:100%;width:${bodyPct(bodyF)}%;background:${bodyF.color};border-radius:2px"></div>
+            </div>
+            <div style="font-size:10px;color:var(--muted);margin-top:4px">${bodyPct(bodyF)}% to goal</div>
+          </div>
+
+        </div>
       </div>
 
-      ${latest.size === 0 ? `
-        <div class="card" style="margin-bottom:20px">
-          <div class="card-body" style="text-align:center;padding:40px;color:var(--muted);font-size:13px">
-            No sets logged yet. Tap any exercise on the Today tab to log sets.
-          </div>
-        </div>` : `
-        <div class="card" style="margin-bottom:20px">
-          <!-- Table header -->
-          <div style="display:grid;grid-template-columns:1fr 80px 70px 60px;gap:8px;padding:8px 16px 6px;border-bottom:1px solid rgba(255,255,255,0.07)">
-            <div style="font-size:10px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">Exercise</div>
-            <div style="font-size:10px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);text-align:right">Weight</div>
-            <div style="font-size:10px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);text-align:right">Reps</div>
-            <div style="font-size:10px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);text-align:right">Sets</div>
-          </div>
-          ${[...latest.entries()].map(([name, rec]) => `
-            <div style="display:grid;grid-template-columns:1fr 80px 70px 60px;gap:8px;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.04)">
-              <div>
-                <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;line-height:1.2">${name}</div>
-                <div style="font-size:10px;color:var(--muted);margin-top:2px">${fmtDate(rec.date)}</div>
-              </div>
-              <div style="text-align:right;font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:var(--accent);line-height:1">
-                ${rec.weight || '—'}<span style="font-size:11px;color:var(--muted)">${rec.weight ? 'lbs' : ''}</span>
-              </div>
-              <div style="text-align:right;font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:var(--fg);line-height:1">
-                ${rec.reps || '—'}
-              </div>
-              <div style="text-align:right;font-size:12px;color:var(--muted)">${rec.totalSets}</div>
-            </div>`).join('')}
-        </div>`}
+      <!-- ══ Progress Photos ══ -->
+      <div id="progressPicsSection"></div>
 
-      <div class="section-label" style="margin-top:4px">Session History</div>
-      ${log.length === 0 ? `
-        <div class="card">
-          <div class="card-body" style="text-align:center;padding:32px;color:var(--muted);font-size:13px">
-            No sessions completed yet. Hit "Complete Session" on the Today tab after your workout.
+      <!-- ══ Lift Logbook ══ -->
+      <div class="card" style="margin-bottom:16px;overflow:hidden">
+        <div style="padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted)">Lift Logbook</div>
+          <span style="font-size:11px;color:var(--muted)">${latest.size} exercises</span>
+        </div>
+        ${latest.size === 0 ? `
+          <div style="padding:32px;text-align:center;color:var(--muted);font-size:13px">
+            Log sets via the exercise modals on the Routine tab.
+          </div>` : `
+          <div style="display:grid;grid-template-columns:1fr 72px 56px;padding:8px 20px 6px;border-bottom:1px solid rgba(255,255,255,0.05)">
+            <div style="font-size:9px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)">Exercise</div>
+            <div style="font-size:9px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);text-align:right">Weight</div>
+            <div style="font-size:9px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);text-align:right">Reps</div>
           </div>
-        </div>` :
-        log.map(entry => `
-          <div class="card" style="margin-bottom:8px">
-            <div class="card-body" style="padding:12px 16px">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${entry.notes ? '6px' : '0'}">
+          <div id="liftTable" style="max-height:400px;overflow-y:auto">
+            ${[...latest.entries()].map(([name, rec], i) => `
+              <div class="lift-row" data-exname="${name.replace(/"/g,'&quot;')}" style="display:grid;grid-template-columns:1fr 72px 56px 24px;align-items:center;padding:10px 20px;cursor:pointer;${i % 2 === 1 ? 'background:rgba(255,255,255,0.02)' : ''}">
                 <div>
-                  <span style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700">${entry.dayName}</span>
-                  <span class="badge badge-muted" style="margin-left:8px">${entry.phase}</span>
+                  <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700">${name}</div>
+                  <div style="font-size:10px;color:var(--muted);margin-top:1px">${fmtDate(rec.date)} · ${rec.totalSets} sets total</div>
                 </div>
-                <span style="font-size:11px;color:var(--muted)">${fmtDate(entry.date)}</span>
+                <div style="text-align:right;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--accent)">
+                  ${rec.weight ? `${rec.weight}<span style="font-size:10px;color:var(--muted)">lbs</span>` : '—'}
+                </div>
+                <div style="text-align:right;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--fg)">
+                  ${rec.reps || '—'}
+                </div>
+                <div style="text-align:right;color:var(--muted);font-size:12px">›</div>
+              </div>`).join('')}
+          </div>`}
+      </div>
+
+      <!-- ══ Session History ══ -->
+      <div class="card" style="overflow:hidden">
+        <div style="padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted)">Session History</div>
+          <span style="font-size:11px;color:var(--muted)">${log.length} sessions</span>
+        </div>
+        ${log.length === 0 ? `
+          <div style="padding:32px;text-align:center;color:var(--muted);font-size:13px">
+            Complete sessions on the Routine tab to build your history.
+          </div>` :
+          log.map((entry, i) => `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 20px;${i % 2 === 1 ? 'background:rgba(255,255,255,0.02)' : ''}border-bottom:1px solid rgba(255,255,255,0.03)">
+              <div>
+                <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700">${entry.dayName}</div>
+                ${entry.notes ? `<div style="font-size:11px;color:rgba(226,234,242,0.5);margin-top:2px;line-height:1.4">${entry.notes}</div>` : ''}
               </div>
-              ${entry.notes ? `<div style="font-size:12px;color:rgba(226,234,242,0.6);line-height:1.5">${entry.notes}</div>` : ''}
+              <div style="text-align:right;flex-shrink:0;margin-left:12px">
+                <div style="font-size:11px;color:var(--muted)">${fmtFull(entry.date)}</div>
+                <div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:capitalize">${entry.phase}</div>
+              </div>
+            </div>`).join('')}
+      </div>`;
+
+    renderProgressPics(panel.querySelector('#progressPicsSection'));
+
+    /* ── Lift history modal (created once, reused) ── */
+    let liftHistoryOverlay = document.getElementById('liftHistoryOverlay');
+    if (!liftHistoryOverlay) {
+      liftHistoryOverlay = document.createElement('div');
+      liftHistoryOverlay.id = 'liftHistoryOverlay';
+      liftHistoryOverlay.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:flex-end;justify-content:center';
+      liftHistoryOverlay.innerHTML = `
+        <div id="liftHistorySheet" style="background:var(--surface);border-radius:18px 18px 0 0;width:100%;max-width:600px;max-height:80vh;display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0">
+            <div>
+              <div style="font-family:'Rajdhani',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Exercise History</div>
+              <div id="liftHistoryName" style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700"></div>
             </div>
-          </div>`).join('')}`;
+            <button id="liftHistoryClose" style="background:rgba(255,255,255,0.08);border:none;color:var(--fg);font-size:18px;width:32px;height:32px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+          </div>
+          <div id="liftHistoryBody" style="overflow-y:auto;flex:1;padding:0 0 24px"></div>
+        </div>`;
+      document.body.appendChild(liftHistoryOverlay);
+    }
+
+    function openLiftHistory(exName) {
+      const sessions = (ws.logbook || [])
+        .map(entry => {
+          const ex = (entry.exercises || []).find(e => e.name === exName);
+          if (!ex) return null;
+          const sets = (ex.sets || []).filter(s => s.reps || s.weight);
+          if (!sets.length) return null;
+          return { date: entry.date, sets };
+        })
+        .filter(Boolean)
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      document.getElementById('liftHistoryName').textContent = exName;
+      const body = document.getElementById('liftHistoryBody');
+      body.innerHTML = sessions.length === 0
+        ? `<div style="padding:32px;text-align:center;color:var(--muted);font-size:13px">No sets logged yet for this exercise.</div>`
+        : sessions.map((s, si) => `
+            <div style="padding:12px 20px;${si > 0 ? 'border-top:1px solid rgba(255,255,255,0.06)' : ''}">
+              <div style="font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:8px">
+                ${new Date(s.date).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'})}
+              </div>
+              ${s.sets.map((set, j) => `
+                <div style="display:flex;align-items:center;gap:12px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.03)">
+                  <span style="font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--muted);min-width:40px">Set ${j+1}</span>
+                  <span style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--accent)">${set.weight ? `${set.weight}<span style="font-size:10px;color:var(--muted)"> lbs</span>` : '—'}</span>
+                  <span style="font-size:12px;color:var(--muted)">×</span>
+                  <span style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--fg)">${set.reps || '—'}<span style="font-size:10px;color:var(--muted)"> reps</span></span>
+                </div>`).join('')}
+            </div>`).join('');
+
+      liftHistoryOverlay.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLiftHistory() {
+      liftHistoryOverlay.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+
+    document.getElementById('liftHistoryClose').onclick = closeLiftHistory;
+    liftHistoryOverlay.addEventListener('click', e => { if (e.target === liftHistoryOverlay) closeLiftHistory(); });
+
+    panel.querySelectorAll('.lift-row').forEach(row => {
+      row.addEventListener('click', () => openLiftHistory(row.dataset.exname));
+    });
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -725,24 +778,19 @@ window.registerPage('workout', function initWorkout() {
   function renderProgressPics(panel) {
     const pics = ws.progressPics || [];
     panel.innerHTML = `
-      <div class="section-label">Progress Pictures</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Stored locally in IndexedDB. Included in JSON export/import.</div>
-
-      <div class="card" style="margin-bottom:16px">
-        <div class="card-body" style="padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <button class="day-tab active" id="uploadPicBtn" style="padding:8px 18px">+ Add Photo</button>
-          <input type="text" class="form-input" id="picNoteInput" placeholder="Note (e.g. Week 3 front)" style="flex:1;min-width:160px" />
-          <input type="file" id="picFileInput" accept="image/*" style="display:none" />
-        </div>
-      </div>
-
-      ${pics.length === 0 ? `
-        <div class="card">
-          <div class="card-body" style="text-align:center;padding:40px;color:var(--muted);font-size:13px">
-            No progress pictures yet. Add your first photo above.
+      <div class="card" style="margin-bottom:16px;overflow:hidden">
+        <div style="padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted)">Progress Photos</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="text" class="form-input" id="picNoteInput" placeholder="Label (e.g. Week 3 front)" style="width:160px;padding:4px 10px;font-size:11px" />
+            <button class="day-tab active" id="uploadPicBtn" style="padding:5px 12px;font-size:11px;white-space:nowrap">+ Add</button>
+            <input type="file" id="picFileInput" accept="image/*" style="display:none" />
           </div>
-        </div>` : `
-        <div class="progress-pics-strip" id="picsStrip"></div>`}`;
+        </div>
+        ${pics.length === 0 ? `
+          <div style="padding:28px;text-align:center;color:var(--muted);font-size:13px">No photos yet — add your first check-in above.</div>` : `
+          <div class="progress-pics-strip" id="picsStrip" style="padding:12px 16px"></div>`}
+      </div>`;
 
     panel.querySelector('#uploadPicBtn').addEventListener('click', () => {
       panel.querySelector('#picFileInput').click();
@@ -782,23 +830,7 @@ window.registerPage('workout', function initWorkout() {
     }
   }
 
-  /* ══════════════════════════════════════════════════════════════
-     PRINCIPLES TAB — static reference from APP_DATA
-  ══════════════════════════════════════════════════════════════ */
-  function renderPrinciples(panel) {
-    panel.innerHTML = `
-      <div class="section-label">Training Principles</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Internalize these. They separate people who get results from those who go through the motions.</div>
-      <div class="grid-2" id="workoutPrinciples"></div>`;
-    const prEl = panel.querySelector('#workoutPrinciples');
-    (APP_DATA.healthPrinciples?.workout || []).forEach(p => {
-      prEl.innerHTML += `
-        <div style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
-          <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--accent);margin-bottom:4px">${p.title}</div>
-          <div style="font-size:12px;color:rgba(226,234,242,0.72);line-height:1.6">${p.body}</div>
-        </div>`;
-    });
-  }
+
 
   /* ── Initial render ── */
   renderTab();

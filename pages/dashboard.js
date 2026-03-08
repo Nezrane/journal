@@ -95,6 +95,35 @@ window.registerPage('dashboard', function initDashboard() {
     </div>
     <!-- ══ END COMMAND CENTER ══ -->
 
+    <!-- Morning Movement — calisthenics skill work -->
+    <div class="card">
+      <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+        <div class="card-title">Morning Movement</div>
+        <span class="badge badge-accent">Daily · Pre-session</span>
+      </div>
+      <div class="card-body" style="padding:0 16px 4px">
+        ${[
+          { name:'Pull-Ups',         sets:'3–5 sets',        rest:'2–3 min',  cue:'Dead hang start. Scapular retraction before pulling. Chin clears bar.',                          progression:'Add reps → resistance band → weight vest' },
+          { name:'Pike Push-Ups',    sets:'3–4 × 8–15',      rest:'90 sec',   cue:'Hips high, head through on descent. Elbows track forward.',                                     progression:'Elevate feet → decline → wall HSPU negative' },
+          { name:'Handstand',        sets:'10–15 min block',  rest:'As needed',cue:'Finger-pad pressure controls balance. Hollow body, slight shoulder shrug.',                    progression:'Wall kick-up → wall freestanding → freestand' },
+          { name:'Push-Ups',         sets:'3–4 sets',        rest:'60–90 sec',cue:'Elbows ~45°. Full ROM — chest to floor, lock out top.',                                         progression:'Standard → archer → weighted → ring push-up' },
+          { name:'L-Sit',            sets:'5 × max hold',    rest:'60 sec',   cue:'Straight legs, toes pointed. Depress shoulders. Push floor away.',                             progression:'Tuck → one leg → full L-sit → V-sit' },
+          { name:'Planche Lean',     sets:'4–5 × 10–20 sec', rest:'90 sec',   cue:'Lean forward until weight shifts to wrists. Posterior pelvic tilt. Full depression.',          progression:'Lean → tuck → advanced tuck → straddle → full' },
+        ].map(s => `
+          <div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+              <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700">${s.name}</div>
+              <div style="display:flex;gap:5px;flex-shrink:0">
+                <span class="badge badge-accent">${s.sets}</span>
+                <span class="badge badge-muted">Rest ${s.rest}</span>
+              </div>
+            </div>
+            <div style="font-size:11.5px;color:rgba(226,234,242,0.75);line-height:1.5;margin-bottom:3px">${s.cue}</div>
+            <div style="font-size:10.5px;color:var(--muted);line-height:1.4">↑ ${s.progression}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+
     <!-- Morning Routine — static reference list (no checkboxes, purely informational) -->
     <div class="card">
       <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
