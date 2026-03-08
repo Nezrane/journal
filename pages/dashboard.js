@@ -40,12 +40,12 @@ window.registerPage('dashboard', function initDashboard() {
     <!-- ══ COMMAND CENTER — North Star + Rings + Focus in one unified card ══ -->
     <div class="card" style="overflow:hidden">
 
-      <!-- Zone 1: North Star — full-width banner at top -->
+      <!-- Zone 1: Overarching Goal — full-width banner at top -->
       <div style="background:linear-gradient(135deg,rgba(79,195,247,0.1) 0%,rgba(2,136,209,0.05) 100%);border-bottom:1px solid rgba(79,195,247,0.2);padding:16px 20px">
-        <div style="font-family:'Rajdhani',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#4fc3f7;margin-bottom:5px">North Star</div>
-        <div style="font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;line-height:1.35;margin-bottom:8px">${APP_DATA.profile.northStar}</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#4fc3f7;margin-bottom:5px">Overarching Goal</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;line-height:1.35;margin-bottom:8px">${APP_DATA.vision.overarchingGoal}</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
-          ${APP_DATA.profile.northStarPillars.map(p=>`<span style="font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;padding:3px 10px;border-radius:20px;border:1px solid rgba(79,195,247,0.3);color:#4fc3f7;background:rgba(79,195,247,0.08)">${p}</span>`).join('')}
+          ${APP_DATA.vision.goalPillars.map(p=>`<span style="font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;padding:3px 10px;border-radius:20px;border:1px solid rgba(79,195,247,0.3);color:#4fc3f7;background:rgba(79,195,247,0.08)">${p}</span>`).join('')}
         </div>
       </div>
 
@@ -112,14 +112,6 @@ window.registerPage('dashboard', function initDashboard() {
 
     <!-- Vision Board -->
     <div class="section-label">Vision Board</div>
-
-    <div style="background:linear-gradient(135deg,rgba(79,195,247,0.08) 0%,rgba(2,136,209,0.04) 100%);border:1px solid rgba(79,195,247,0.2);border-radius:var(--radius);padding:18px 22px">
-      <div style="font-family:'Rajdhani',sans-serif;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#4fc3f7;margin-bottom:8px">Overarching Goal</div>
-      <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;line-height:1.4;margin-bottom:12px">${APP_DATA.vision.overarchingGoal}</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${APP_DATA.vision.goalPillars.map(p=>`<span style="font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;padding:4px 12px;border-radius:20px;border:1px solid rgba(79,195,247,0.3);color:#4fc3f7;background:rgba(79,195,247,0.08)">${p}</span>`).join('')}
-      </div>
-    </div>
 
     <div id="visionAreas"></div>`;
 

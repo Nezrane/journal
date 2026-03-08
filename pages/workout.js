@@ -37,12 +37,45 @@
 window.registerPage('workout', function initWorkout() {
 
   /* ── Data ── */
-  const RECOVERY = APP_DATA.workout.recovery;
-  const RAMPING  = APP_DATA.workout.ramping;
-  const REST_DAY = APP_DATA.workout.restDay;
+  const RECOVERY       = APP_DATA.workout.recovery;
+  const RAMPING        = APP_DATA.workout.ramping;
+  const REST_DAY       = APP_DATA.workout.restDay;
+  const PROGRAM_LOGIC  = APP_DATA.workout.programLogic;
 
   /* ── Live state ── */
   const ws = STATE.data.workout;
+
+  /* ── Program logic helpers ── */
+  const COMPOUND_KEYWORDS = ['squat', 'bench', 'row', 'pulldown', 'pull-up', 'lunge'];
+
+  function getWeekRule(phaseName, weekNum) {
+    const phaseLogic = PROGRAM_LOGIC.phases.find(p => p.name.toLowerCase() === phaseName);
+    if (!phaseLogic) return null;
+    return phaseLogic.weekRules.find(r => r.weeks.includes(weekNum)) || phaseLogic.weekRules[0];
+  }
+
+  function isCompound(exName) {
+    const lower = exName.toLowerCase();
+    return COMPOUND_KEYWORDS.some(k => lower.includes(k));
+  }
+
+  function getSets(ex, phaseName, weekNum) {
+    if (phaseName === 'ramping' && weekNum >= 7) {
+      return isCompound(ex.name) ? 3 : 2;
+    }
+    const rule = getWeekRule(phaseName, weekNum);
+    return rule ? rule.sets : 1;
+  }
+
+  function getRPEForWeek(ex, phaseName, weekNum) {
+    if (phaseName === 'recovery') {
+      const key = weekNum <= 2 ? 'wk12' : 'wk35';
+      return { earlyRPE: ex.earlyRPE?.[key] || '~7', lastRPE: ex.lastRPE?.[key] || '~8' };
+    } else {
+      const key = weekNum <= 6 ? 'wk6' : 'wk712';
+      return { earlyRPE: ex.earlyRPE?.[key] || '~7', lastRPE: ex.lastRPE?.[key] || '~8' };
+    }
+  }
 
   const PHASE_LIMITS = { recovery: 5, ramping: 7 };
 
@@ -57,18 +90,13 @@ window.registerPage('workout', function initWorkout() {
   const inner = document.getElementById('workout-inner');
   inner.innerHTML = `
     ${buildPageHeader('Jeff Nippard PPL', 'Workout', 'Program',
-      'Recovery (Wks 1–5) → Ramping (Wks 6–12). Tap any exercise for notes & swaps.',
-      `<div class="phase-toggle">
-         <button class="phase-btn${currentPhaseName === 'recovery' ? ' active' : ''}" id="btnRecovery">Recovery</button>
-         <button class="phase-btn${currentPhaseName === 'ramping'  ? ' active' : ''}" id="btnRamping">Ramping</button>
-       </div>`
+      'Recovery (Wks 1–5) → Ramping (Wks 6–12). Tap any exercise for notes & swaps.'
     )}
 
-    <!-- Tab bar: Morning + Stretching are sections inside Today; Macro Calc is on Nutrition page -->
     <div class="day-tabs" id="mainWorkoutTabs" style="margin-bottom:8px;flex-wrap:wrap">
       <button class="day-tab active" data-wtab="today">Today</button>
+      <button class="day-tab"        data-wtab="movement">Movement</button>
       <button class="day-tab"        data-wtab="logbook">Logbook</button>
-      <button class="day-tab"        data-wtab="log">History</button>
       <button class="day-tab"        data-wtab="pics">Progress Pics</button>
       <button class="day-tab"        data-wtab="principles">Principles</button>
     </div>
@@ -80,13 +108,8 @@ window.registerPage('workout', function initWorkout() {
     currentPhaseName = name;
     currentPhaseData = name === 'ramping' ? RAMPING : RECOVERY;
     STATE.setWorkoutPhase(name);
-    inner.querySelector('#btnRecovery').classList.toggle('active', name === 'recovery');
-    inner.querySelector('#btnRamping').classList.toggle('active',  name === 'ramping');
     if (activeTab === 'today') renderToday();
   }
-
-  inner.querySelector('#btnRecovery').addEventListener('click', () => setPhase('recovery'));
-  inner.querySelector('#btnRamping').addEventListener('click',  () => setPhase('ramping'));
 
   /* ── Tab routing ── */
   let activeTab = 'today';
@@ -103,8 +126,8 @@ window.registerPage('workout', function initWorkout() {
     const panel = document.getElementById('workoutTabPanel');
     switch (activeTab) {
       case 'today':      renderToday();               break;
+      case 'movement':   renderMovement(panel);        break;
       case 'logbook':    renderLogbook(panel);         break;
-      case 'log':        renderHistory(panel);         break;
       case 'pics':       renderProgressPics(panel);    break;
       case 'principles': renderPrinciples(panel);      break;
     }
@@ -150,28 +173,28 @@ window.registerPage('workout', function initWorkout() {
         <div class="card-body" style="padding:10px 16px 14px">
           <div style="font-size:10px;color:var(--muted);margin-bottom:5px">Cycles completed: ${cyclesDone} / ${cycleLimit}</div>
           <div class="progress-track"><div class="progress-fill" style="width:${Math.min(100, (cyclesDone/cycleLimit)*100)}%"></div></div>
+          <!-- Phase toggle — lives inside the schedule card -->
+          <div class="phase-toggle" style="margin-top:12px">
+            <button class="phase-btn${currentPhaseName === 'recovery' ? ' active' : ''}" id="phaseRecoveryBtn">Recovery</button>
+            <button class="phase-btn${currentPhaseName === 'ramping'  ? ' active' : ''}" id="phaseRampingBtn">Ramping</button>
+          </div>
           <!-- Day tabs — full 7-step schedule so both Rest days are shown -->
-          <div class="day-tabs" style="margin-top:14px" id="dayTabs"></div>
+          <div class="day-tabs" style="margin-top:10px" id="dayTabs"></div>
         </div>
       </div>
 
       <!-- Exercise card -->
       <div id="workoutContent"></div>
 
-      <!-- Log session form -->
+      <!-- Session complete -->
       ${currentDay !== 'Rest' ? `
         <div class="card" style="margin-top:16px">
-          <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
-            <div class="card-title">Log Session</div>
-            <span class="badge badge-muted">${currentDay}</span>
-          </div>
-          <div class="card-body" style="padding:16px">
+          <div class="card-body" style="padding:16px;text-align:center">
             <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
-              Record your actual sets, reps, and weight. Saves to Logbook + advances schedule.
+              Log sets via each exercise above, then mark the session done to advance the schedule.
             </div>
-            <div id="logFormExercises"></div>
-            <textarea class="venture-notes-input" id="workoutNotes" placeholder="Session notes — how it felt, what to adjust…" style="height:56px;margin-top:10px"></textarea>
-            <button class="phase-btn active" id="logWorkoutBtn" style="margin-top:12px;padding:10px 24px;font-size:14px">✓ Log ${currentDay} Session</button>
+            <textarea class="venture-notes-input" id="workoutNotes" placeholder="Session notes — how it felt, what to adjust…" style="height:56px;margin-bottom:12px"></textarea>
+            <button class="phase-btn active" id="logWorkoutBtn" style="padding:10px 24px;font-size:14px">✓ Complete ${currentDay} Session →</button>
           </div>
         </div>` : `
         <div class="card" style="margin-top:16px">
@@ -182,15 +205,6 @@ window.registerPage('workout', function initWorkout() {
             <button class="day-tab active" id="logRestBtn" style="padding:8px 20px">Mark Rest Day Complete →</button>
           </div>
         </div>`}
-
-      <!-- ── Morning Routine — collapsible section in Today tab ── -->
-      <div class="card" style="margin-top:16px" id="morningSection">
-        <div class="card-header" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between" id="morningToggle">
-          <div class="card-title">Morning Routine</div>
-          <span style="font-size:18px;color:var(--muted);transition:transform 0.2s" id="morningArrow">▾</span>
-        </div>
-        <div id="morningBody" style="display:none"></div>
-      </div>
 
       <!-- ── Stretching — collapsible section in Today tab ── -->
       <div class="card" style="margin-top:10px" id="stretchSection">
@@ -207,14 +221,15 @@ window.registerPage('workout', function initWorkout() {
       STATE.advancePhase();
       currentPhaseName = ws.currentPhase;
       currentPhaseData = currentPhaseName === 'ramping' ? RAMPING : RECOVERY;
-      inner.querySelector('#btnRecovery').classList.toggle('active', currentPhaseName === 'recovery');
-      inner.querySelector('#btnRamping').classList.toggle('active',  currentPhaseName === 'ramping');
       renderToday();
     });
 
+    /* Phase toggle buttons (live inside the re-rendered card) */
+    panel.querySelector('#phaseRecoveryBtn')?.addEventListener('click', () => setPhase('recovery'));
+    panel.querySelector('#phaseRampingBtn')?.addEventListener('click',  () => setPhase('ramping'));
+
     renderDayTabs();
     renderDayContent();
-    buildLogForm();
 
     /* Rest day log button */
     inner.querySelector('#logRestBtn')?.addEventListener('click', () => {
@@ -222,40 +237,11 @@ window.registerPage('workout', function initWorkout() {
       renderToday();
     });
 
-    /* Log session button */
+    /* Log session button — advances schedule; per-exercise sets are logged via the modal */
     inner.querySelector('#logWorkoutBtn')?.addEventListener('click', () => {
-      const notes     = (inner.querySelector('#workoutNotes')?.value || '').trim();
-      const exercises = collectLogFormData();
-      STATE.logWorkout(currentDay, currentPhaseName, exercises.map(e => e.name), notes);
-      if (exercises.some(e => e.sets.length > 0)) {
-        STATE.addLogbookEntry({ dayName: currentDay, phase: currentPhaseName, exercises });
-      }
+      const notes = (inner.querySelector('#workoutNotes')?.value || '').trim();
+      STATE.logWorkout(currentDay, currentPhaseName, [], notes);
       renderToday();
-    });
-
-    /* ── Morning Routine collapsible ── */
-    const morningToggle = panel.querySelector('#morningToggle');
-    const morningBody   = panel.querySelector('#morningBody');
-    const morningArrow  = panel.querySelector('#morningArrow');
-    const routine       = APP_DATA.morningRoutine || [];
-    morningBody.innerHTML = `
-      <div class="card-body" style="padding:4px 16px">
-        <div style="font-size:12px;color:var(--muted);padding:8px 0 10px">Non-negotiable daily foundation. Complete before any work begins.</div>
-        ${routine.map((step, i) => `
-          <div style="display:flex;align-items:flex-start;gap:12px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
-            <span style="font-size:20px;line-height:1.1">${step.icon}</span>
-            <div style="flex:1">
-              <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;margin-bottom:2px">
-                <span style="color:var(--accent);margin-right:5px">${i+1}.</span>${step.step}
-              </div>
-              <div style="font-size:11.5px;color:rgba(226,234,242,0.65);line-height:1.5">${step.detail}</div>
-            </div>
-          </div>`).join('')}
-      </div>`;
-    morningToggle.addEventListener('click', () => {
-      const open = morningBody.style.display !== 'none';
-      morningBody.style.display = open ? 'none' : 'block';
-      morningArrow.style.transform = open ? '' : 'rotate(180deg)';
     });
 
     /* ── Stretching collapsible ── */
@@ -289,65 +275,6 @@ window.registerPage('workout', function initWorkout() {
     });
   }
 
-  /* Build the inline log form with one row per exercise */
-  function buildLogForm() {
-    const formEl = document.getElementById('logFormExercises');
-    if (!formEl || currentDay === 'Rest') return;
-    const dayData = currentPhaseData[currentDay] || { exercises: [] };
-    formEl.innerHTML = '';
-    dayData.exercises.forEach((ex, ei) => {
-      const row = document.createElement('div');
-      row.className = 'logbook-ex-row';
-      row.dataset.exidx = ei;
-      row.innerHTML = `
-        <div class="logbook-ex-name">${ex.name}</div>
-        <div class="logbook-sets" id="lsets-${ei}">
-          <div class="logbook-set-row" data-set="0">
-            <span class="logbook-set-label">Set 1</span>
-            <input class="form-input logbook-reps" type="number" placeholder="Reps" min="1" style="width:70px" />
-            <span style="font-size:11px;color:var(--muted)">×</span>
-            <input class="form-input logbook-weight" type="number" placeholder="lbs" min="0" style="width:80px" />
-          </div>
-        </div>
-        <button class="logbook-add-set" data-exidx="${ei}">+ Set</button>`;
-      formEl.appendChild(row);
-
-      row.querySelector('.logbook-add-set').addEventListener('click', () => {
-        const setsEl = row.querySelector(`#lsets-${ei}`);
-        const setNum = setsEl.children.length + 1;
-        const setRow = document.createElement('div');
-        setRow.className = 'logbook-set-row';
-        setRow.dataset.set = setNum - 1;
-        setRow.innerHTML = `
-          <span class="logbook-set-label">Set ${setNum}</span>
-          <input class="form-input logbook-reps" type="number" placeholder="Reps" min="1" style="width:70px" />
-          <span style="font-size:11px;color:var(--muted)">×</span>
-          <input class="form-input logbook-weight" type="number" placeholder="lbs" min="0" style="width:80px" />
-          <button class="logbook-rm-set" title="Remove set">×</button>`;
-        setRow.querySelector('.logbook-rm-set').addEventListener('click', () => setRow.remove());
-        setsEl.appendChild(setRow);
-      });
-    });
-  }
-
-  /* Collect log form data into [{name, sets:[{reps,weight}]}] */
-  function collectLogFormData() {
-    const formEl = document.getElementById('logFormExercises');
-    if (!formEl) return [];
-    const dayData = currentPhaseData[currentDay] || { exercises: [] };
-    const result  = [];
-    formEl.querySelectorAll('.logbook-ex-row').forEach((row, ei) => {
-      const sets = [];
-      row.querySelectorAll('.logbook-set-row').forEach(sr => {
-        const reps   = parseInt(sr.querySelector('.logbook-reps')?.value)    || 0;
-        const weight = parseFloat(sr.querySelector('.logbook-weight')?.value) || 0;
-        if (reps || weight) sets.push({ reps, weight, duration: null, notes: '' });
-      });
-      result.push({ name: dayData.exercises[ei]?.name || 'Exercise ' + (ei+1), sets });
-    });
-    return result;
-  }
-
   /* Day tabs — uses the full 7-step schedule so BOTH Rest days appear.
      Tabs are labelled by position: "Rest" and "Rest" — clicking either
      shows the rest day info (same content). */
@@ -365,7 +292,6 @@ window.registerPage('workout', function initWorkout() {
         tabs.querySelectorAll('.day-tab').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         renderDayContent();
-        buildLogForm();
       });
       tabs.appendChild(btn);
     });
@@ -391,21 +317,42 @@ window.registerPage('workout', function initWorkout() {
       </div>`;
 
     const list = document.getElementById('exerciseList');
+    const weekNum = ws.weekNumber || 1;
     dayData.exercises.forEach((ex, i) => {
       const row = document.createElement('div');
       row.className = 'exercise-row';
-      row.innerHTML = `
-        <div class="ex-num">${i + 1}</div>
-        <div class="ex-info">
-          <div class="ex-name">${ex.name}</div>
-          <div class="ex-meta">
-            <span class="ex-chip">${ex.muscle}</span>
-            <span class="ex-chip reps">${ex.reps}</span>
-            <span class="ex-chip rpe">RPE ${ex.rpe}</span>
-            <span class="ex-chip">Rest: ${ex.rest}</span>
-          </div>
-          ${ex.notes ? `<div class="ex-notes">${ex.notes}</div>` : ''}
-        </div>`;
+      if (currentDay === 'Rest') {
+        /* restDay keeps original field names */
+        row.innerHTML = `
+          <div class="ex-num">${i + 1}</div>
+          <div class="ex-info">
+            <div class="ex-name">${ex.name}</div>
+            <div class="ex-meta">
+              <span class="ex-chip">${ex.muscle}</span>
+              <span class="ex-chip reps">${ex.reps}</span>
+              ${ex.rpe ? `<span class="ex-chip rpe">RPE ${ex.rpe}</span>` : ''}
+              <span class="ex-chip">Rest: ${ex.rest}</span>
+            </div>
+            ${ex.notes ? `<div class="ex-notes">${ex.notes}</div>` : ''}
+          </div>`;
+      } else {
+        const { earlyRPE, lastRPE } = getRPEForWeek(ex, currentPhaseName, weekNum);
+        const sets = getSets(ex, currentPhaseName, weekNum);
+        const rule = getWeekRule(currentPhaseName, weekNum);
+        row.innerHTML = `
+          <div class="ex-num">${i + 1}</div>
+          <div class="ex-info">
+            <div class="ex-name">${ex.name}</div>
+            <div class="ex-meta">
+              <span class="ex-chip reps">${sets} × ${ex.reps}</span>
+              <span class="ex-chip rpe">Last RPE ${lastRPE}</span>
+              <span class="ex-chip">Rest: ${ex.rest}</span>
+              ${ex.warmupSets ? `<span class="ex-chip">${ex.warmupSets} warmup</span>` : ''}
+              ${ex.toFailure && rule?.toFailure ? `<span class="ex-chip" style="color:var(--accent3)">→ Failure</span>` : ''}
+            </div>
+            ${ex.note ? `<div class="ex-notes">${ex.note}</div>` : ''}
+          </div>`;
+      }
       row.addEventListener('click', () => openExModal(ex, i + 1));
       list.appendChild(row);
     });
@@ -416,28 +363,176 @@ window.registerPage('workout', function initWorkout() {
   const exModal   = document.querySelector('#page-workout .ex-modal');
 
   function openExModal(ex, num) {
-    document.getElementById('exModalEyebrow').textContent = ex.muscle + ' · ' + (currentPhaseName === 'recovery' ? 'Recovery Phase' : 'Ramping Phase');
-    document.getElementById('exModalTitle').textContent   = ex.name;
-    document.getElementById('exModalChips').innerHTML = `
-      <span class="badge badge-accent">${ex.reps}</span>
-      <span class="badge badge-warn">RPE ${ex.rpe}</span>
-      <span class="badge badge-muted">Rest ${ex.rest}</span>`;
-    document.getElementById('exModalBody').innerHTML = `
-      <div class="modal-section">
-        <div class="modal-section-label" style="color:var(--accent)">Coaching Notes
-          <span style="flex:1;height:1px;background:var(--border);display:block;margin-left:10px"></span>
+    const weekNum = ws.weekNumber || 1;
+    const isRestDay = currentDay === 'Rest';
+
+    if (isRestDay) {
+      document.getElementById('exModalEyebrow').textContent = ex.muscle + ' · Active Recovery';
+      document.getElementById('exModalTitle').textContent   = ex.name;
+      document.getElementById('exModalChips').innerHTML = `
+        <span class="badge badge-accent">${ex.reps}</span>
+        ${ex.rpe ? `<span class="badge badge-warn">RPE ${ex.rpe}</span>` : ''}
+        <span class="badge badge-muted">Rest ${ex.rest}</span>`;
+      document.getElementById('exModalBody').innerHTML = `
+        <div class="modal-section">
+          <div class="modal-section-label" style="color:var(--accent)">Notes
+            <span style="flex:1;height:1px;background:var(--border);display:block;margin-left:10px"></span>
+          </div>
+          <div class="description-text" style="line-height:1.7">${ex.notes || ''}</div>
         </div>
-        <div class="description-text" style="line-height:1.7">${ex.notes || 'Focus on quality reps. Control the negative on every set.'}</div>
-      </div>
-      <div class="modal-section" style="margin-top:20px">
-        <div class="modal-section-label" style="color:var(--accent)">Swap Options
-          <span style="flex:1;height:1px;background:var(--border);display:block;margin-left:10px"></span>
+        <div class="modal-section" style="margin-top:20px">
+          <div class="modal-section-label" style="color:var(--accent)">Alternatives
+            <span style="flex:1;height:1px;background:var(--border);display:block;margin-left:10px"></span>
+          </div>
+          <div class="swap-list">
+            ${(ex.swaps || []).map((s, si) => `<div class="swap-item"><strong>Option ${si+1}:</strong> ${s}</div>`).join('')}
+          </div>
+        </div>`;
+    } else {
+      const { earlyRPE, lastRPE } = getRPEForWeek(ex, currentPhaseName, weekNum);
+      const sets     = getSets(ex, currentPhaseName, weekNum);
+      const rule     = getWeekRule(currentPhaseName, weekNum);
+      const VIDEO_ID = 'ZaTM37cfiDs'; /* placeholder — swap per-exercise when ready */
+
+      const options = [
+        { name: ex.name, note: ex.note },
+        ex.sub1 ? { name: ex.sub1, note: null } : null,
+        ex.sub2 ? { name: ex.sub2, note: null } : null,
+      ].filter(Boolean);
+      const OPT_LABELS = ['Primary', 'Substitute 1', 'Substitute 2'];
+      let activeIdx = 0;
+
+      /* Chips are static across all options */
+      document.getElementById('exModalChips').innerHTML = `
+        <span class="badge badge-accent">${sets} × ${ex.reps}</span>
+        <span class="badge badge-warn">Last RPE ${lastRPE}</span>
+        <span class="badge badge-muted">Rest ${ex.rest}</span>
+        ${ex.warmupSets ? `<span class="badge badge-muted">${ex.warmupSets} warmup sets</span>` : ''}`;
+
+      /* Build modal body — only text nodes update on nav, iframe stays loaded */
+      document.getElementById('exModalBody').innerHTML = `
+        <!-- ── Option navigator ── -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <button id="exPrevBtn" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:var(--fg);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:0.3;line-height:1">‹</button>
+          <div style="flex:1;text-align:center">
+            <div id="exOptLabel" style="font-size:10px;color:var(--accent);font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:5px">Primary</div>
+            <div id="exOptDots" style="display:flex;justify-content:center;gap:5px">
+              ${options.map((_, i) => `<span style="width:7px;height:7px;border-radius:50%;background:${i === 0 ? 'var(--accent)' : 'rgba(255,255,255,0.2)'};display:inline-block;transition:background 0.2s"></span>`).join('')}
+            </div>
+          </div>
+          <button id="exNextBtn" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:var(--fg);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;${options.length <= 1 ? 'opacity:0.3;' : ''}line-height:1">›</button>
         </div>
-        <div class="swap-list">
-          ${(ex.swaps || []).map((s, i) => `<div class="swap-item"><strong>Option ${i+1}:</strong> ${s}</div>`).join('')}
-          ${!ex.swaps?.length ? '<div style="color:var(--muted);font-size:13px">No direct swaps — this exercise is foundational.</div>' : ''}
+
+        <!-- ── Exercise name (updates with nav) ── -->
+        <div id="exOptName" style="font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:800;color:var(--fg);line-height:1.25;margin-bottom:14px">${ex.name}</div>
+
+        <!-- ── Video (static — iframe stays loaded across nav) ── -->
+        <div style="position:relative;width:100%;height:44vh;background:#000;border-radius:12px;overflow:hidden;margin-bottom:14px">
+          <iframe
+            src="https://www.youtube.com/embed/${VIDEO_ID}?autoplay=1&mute=1&rel=0&controls=1&modestbranding=1&loop=1&playlist=${VIDEO_ID}"
+            style="position:absolute;inset:0;width:100%;height:100%;border:none"
+            allow="autoplay; encrypted-media; fullscreen"
+            allowfullscreen
+          ></iframe>
         </div>
-      </div>`;
+
+        <!-- ── Notes (updates with nav) ── -->
+        <div id="exOptNote" style="font-size:12px;color:rgba(226,234,242,0.72);line-height:1.7;margin-bottom:14px">${ex.note || 'Focus on quality reps. Control the negative on every set.'}</div>
+
+        ${rule ? `<!-- ── Week prescription (static) ── -->
+        <div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:11px 14px;margin-bottom:20px">
+          <div style="font-size:10px;color:var(--accent);font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:5px">Week ${weekNum} Prescription</div>
+          <div style="font-size:12px;color:rgba(226,234,242,0.75);line-height:1.6">
+            <strong>${sets} working set${sets !== 1 ? 's' : ''}</strong> · Early sets: ${earlyRPE} · Last set: ${lastRPE}
+            ${ex.toFailure && rule.toFailure ? ' · <span style="color:var(--accent3)">Last set to failure</span>' : ''}
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px;font-style:italic">${rule.note}</div>
+        </div>` : ''}
+
+        <!-- ── Log form ── -->
+        <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:16px">
+          <div style="font-size:10px;color:var(--muted);font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">
+            Log: <span id="exLogExName" style="color:var(--accent)">${ex.name}</span>
+          </div>
+          <div id="exModalSetList"></div>
+          <button id="exAddSetBtn" style="font-size:12px;color:var(--accent);background:none;border:1px dashed rgba(255,255,255,0.15);border-radius:8px;padding:7px 14px;cursor:pointer;width:100%;margin-top:6px">+ Add Set</button>
+          <button id="exLogSetsBtn" style="margin-top:10px;width:100%;padding:11px;background:var(--accent);color:#000;border:none;border-radius:10px;font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:0.5px">✓ Log Sets</button>
+        </div>`;
+
+      /* ── Add a set row ── */
+      function addSetRow(setNum) {
+        const setList = document.getElementById('exModalSetList');
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:8px';
+        row.innerHTML = `
+          <span style="font-size:11px;color:var(--muted);width:40px;flex-shrink:0">Set ${setNum}</span>
+          <input class="form-input ex-modal-reps" type="number" placeholder="Reps" min="1" style="flex:1;padding:8px 10px;font-size:13px" />
+          <span style="font-size:11px;color:var(--muted)">×</span>
+          <input class="form-input ex-modal-weight" type="number" placeholder="lbs" min="0" style="flex:1;padding:8px 10px;font-size:13px" />
+          ${setNum > 1 ? `<button class="ex-rm-set" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;flex-shrink:0;width:24px;line-height:1">×</button>` : '<span style="width:24px;flex-shrink:0"></span>'}`;
+        if (setNum > 1) {
+          row.querySelector('.ex-rm-set').addEventListener('click', () => {
+            row.remove();
+            document.getElementById('exModalSetList')?.querySelectorAll('div').forEach((r, i) => {
+              const lbl = r.querySelector('span');
+              if (lbl) lbl.textContent = `Set ${i + 1}`;
+            });
+          });
+        }
+        setList.appendChild(row);
+      }
+      addSetRow(1);
+
+      /* ── Update text when navigating options (iframe stays untouched) ── */
+      function updateOption(idx) {
+        const opt   = options[idx];
+        const label = OPT_LABELS[idx] || `Option ${idx + 1}`;
+        activeIdx = idx;
+        document.getElementById('exOptLabel').textContent   = label;
+        document.getElementById('exOptName').textContent    = opt.name;
+        document.getElementById('exOptNote').textContent    = opt.note || (idx === 0
+          ? 'Focus on quality reps. Control the negative on every set.'
+          : 'Use the same rep scheme and RPE targets as the primary exercise.');
+        document.getElementById('exLogExName').textContent  = opt.name;
+        document.getElementById('exModalTitle').textContent = opt.name;
+        document.getElementById('exModalEyebrow').textContent = label + ' · ' + (currentPhaseName === 'recovery' ? 'Recovery' : 'Ramping') + ' · Wk ' + weekNum;
+        document.getElementById('exOptDots').querySelectorAll('span').forEach((dot, i) => {
+          dot.style.background = i === idx ? 'var(--accent)' : 'rgba(255,255,255,0.2)';
+        });
+        document.getElementById('exPrevBtn').style.opacity = idx === 0 ? '0.3' : '1';
+        document.getElementById('exNextBtn').style.opacity = idx === options.length - 1 ? '0.3' : '1';
+      }
+
+      /* Set initial header state */
+      document.getElementById('exModalEyebrow').textContent = 'Primary · ' + (currentPhaseName === 'recovery' ? 'Recovery' : 'Ramping') + ' · Wk ' + weekNum;
+      document.getElementById('exModalTitle').textContent   = ex.name;
+
+      /* Arrow nav */
+      document.getElementById('exPrevBtn').addEventListener('click', () => { if (activeIdx > 0) updateOption(activeIdx - 1); });
+      document.getElementById('exNextBtn').addEventListener('click', () => { if (activeIdx < options.length - 1) updateOption(activeIdx + 1); });
+
+      /* + Add Set */
+      document.getElementById('exAddSetBtn').addEventListener('click', () => {
+        addSetRow(document.getElementById('exModalSetList').children.length + 1);
+      });
+
+      /* ✓ Log Sets */
+      document.getElementById('exLogSetsBtn').addEventListener('click', () => {
+        const opt = options[activeIdx];
+        const loggedSets = [];
+        document.getElementById('exModalSetList').querySelectorAll('div').forEach(row => {
+          const reps   = parseInt(row.querySelector('.ex-modal-reps')?.value)    || 0;
+          const weight = parseFloat(row.querySelector('.ex-modal-weight')?.value) || 0;
+          if (reps || weight) loggedSets.push({ reps, weight, duration: null, notes: '' });
+        });
+        if (!loggedSets.length) return;
+        STATE.addLogbookEntry({ dayName: currentDay, phase: currentPhaseName, exercises: [{ name: opt.name, sets: loggedSets }] });
+        const btn = document.getElementById('exLogSetsBtn');
+        btn.textContent = '✓ Logged!';
+        btn.style.background = 'var(--accent3)';
+        setTimeout(() => { btn.textContent = '✓ Log Sets'; btn.style.background = 'var(--accent)'; }, 1800);
+      });
+    }
     exOverlay.classList.add('open');
     document.body.style.overflow = 'hidden';
   }
@@ -454,92 +549,170 @@ window.registerPage('workout', function initWorkout() {
   setupSwipeDismiss(exModal, closeExModal);
 
   /* ══════════════════════════════════════════════════════════════
-     LOGBOOK TAB
-     Shows every unique exercise with its personal record (PR):
-     highest weight × reps logged across all sessions.
-     Aggregates across all logbook entries in STATE.data.workout.logbook.
-     Data shape: logbook[].exercises[].sets[].{ reps, weight }
+     MOVEMENT TAB — morning calisthenics skill practice
   ══════════════════════════════════════════════════════════════ */
-  function renderLogbook(panel) {
-    const logbook = ws.logbook || [];
-
-    /* Build a map: exerciseName → { bestWeight, bestReps, totalSets, sessions } */
-    const exMap = new Map();
-    logbook.forEach(entry => {
-      (entry.exercises || []).forEach(ex => {
-        if (!exMap.has(ex.name)) {
-          exMap.set(ex.name, { bestWeight: 0, bestReps: 0, totalSets: 0, sessions: 0 });
-        }
-        const rec = exMap.get(ex.name);
-        rec.sessions++;
-        (ex.sets || []).forEach(s => {
-          rec.totalSets++;
-          /* PR = highest weight; if tie, pick more reps */
-          if (s.weight > rec.bestWeight || (s.weight === rec.bestWeight && s.reps > rec.bestReps)) {
-            rec.bestWeight = s.weight || 0;
-            rec.bestReps   = s.reps   || 0;
-          }
-        });
-      });
-    });
+  function renderMovement(panel) {
+    const SKILLS = [
+      {
+        name: 'Pull-Ups',
+        goal: 'Max reps / weighted',
+        cue: 'Dead hang start. Scapular retraction before pulling. Chin clears bar.',
+        sets: '3–5 sets',
+        rest: '2–3 min',
+        progression: 'Add reps → add band resistance → add weight vest',
+      },
+      {
+        name: 'Pike Push-Ups',
+        goal: 'Shoulder strength & handstand press prep',
+        cue: 'Hips high, head through on descent. Elbows track forward.',
+        sets: '3–4 sets × 8–15 reps',
+        rest: '90 sec',
+        progression: 'Elevate feet → decline → wall handstand push-up negative',
+      },
+      {
+        name: 'Handstand Practice',
+        goal: 'Balance & overhead compression',
+        cue: 'Finger-pad pressure controls balance. Hollow body, slight shoulder shrug.',
+        sets: '10–15 min skill block',
+        rest: 'As needed between attempts',
+        progression: 'Wall kick-up → wall freestanding → freestanding hold → walk',
+      },
+      {
+        name: 'Push-Ups',
+        goal: 'Chest & tricep volume',
+        cue: 'Elbows ~45°. Full ROM — chest to floor, lock out top.',
+        sets: '3–4 sets',
+        rest: '60–90 sec',
+        progression: 'Standard → archer → weighted vest → ring push-up',
+      },
+      {
+        name: 'L-Sit',
+        goal: 'Hip flexor & core compression',
+        cue: 'Straight legs, toes pointed. Depress shoulders hard. Push floor away.',
+        sets: '5 × max hold',
+        rest: '60 sec',
+        progression: 'Tuck → one leg extended → full L-sit → V-sit',
+      },
+      {
+        name: 'Planche Lean',
+        goal: 'Straight arm strength & planche prep',
+        cue: 'Lean forward until weight shifts to wrists. Posterior pelvic tilt. Full depression.',
+        sets: '4–5 × 10–20 sec',
+        rest: '90 sec',
+        progression: 'Lean → tuck planche → advanced tuck → straddle → full planche',
+      },
+    ];
 
     panel.innerHTML = `
-      <div class="section-label">Exercise Logbook</div>
+      <div class="section-label">Morning Movement</div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:14px">
-        Personal records across all sessions — best set (highest weight) per exercise.
+        Calisthenics skill work — do this before your PPL session or as a standalone morning block.
       </div>
-      ${exMap.size === 0 ? `
-        <div class="card">
-          <div class="card-body" style="text-align:center;padding:40px;color:var(--muted);font-size:13px">
-            No logbook entries yet. Log a session on the Today tab to record your lifts.
+      ${SKILLS.map(s => `
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+            <div>
+              <div class="card-title">${s.name}</div>
+              <div style="font-size:11px;color:var(--accent);margin-top:2px">${s.goal}</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <span class="badge badge-accent">${s.sets}</span>
+              <span class="badge badge-muted" style="margin-left:5px">Rest ${s.rest}</span>
+            </div>
           </div>
-        </div>` : `
-        <div class="card">
-          <div class="card-body" style="padding:0 16px">
-            ${[...exMap.entries()].map(([name, rec]) => `
-              <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
-                <div style="flex:1;min-width:0">
-                  <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;margin-bottom:2px">${name}</div>
-                  <div style="font-size:11px;color:var(--muted)">${rec.sessions} session${rec.sessions !== 1 ? 's' : ''} · ${rec.totalSets} total sets</div>
-                </div>
-                <div style="text-align:right;flex-shrink:0">
-                  <div style="font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:var(--accent);line-height:1">
-                    ${rec.bestWeight ? rec.bestWeight + '<span style="font-size:12px;color:var(--muted)">lbs</span>' : '—'}
-                  </div>
-                  <div style="font-size:11px;color:var(--muted);margin-top:1px">
-                    ${rec.bestReps ? rec.bestReps + ' reps' : 'no weight logged'}
-                  </div>
-                </div>
-                <span class="logbook-set-chip" style="flex-shrink:0">PR</span>
-              </div>`).join('')}
+          <div class="card-body" style="padding:10px 16px 14px;display:flex;flex-direction:column;gap:10px">
+            <div>
+              <div style="font-size:10px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:4px">Cue</div>
+              <div style="font-size:12px;color:rgba(226,234,242,0.8);line-height:1.6">${s.cue}</div>
+            </div>
+            <div>
+              <div style="font-size:10px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Progression</div>
+              <div style="font-size:11.5px;color:var(--muted);line-height:1.5">${s.progression}</div>
+            </div>
           </div>
-        </div>`}`;
+        </div>`).join('')}`;
   }
 
   /* ══════════════════════════════════════════════════════════════
-     HISTORY TAB — summary log from STATE.data.workout.log
+     LOGBOOK TAB
+     Top: current stats table — most recent weight × reps per exercise.
+     Bottom: session history from ws.log (date, day, notes).
+     Data shape: logbook[].{ date, exercises[].{ name, sets[].{ reps, weight } } }
   ══════════════════════════════════════════════════════════════ */
-  function renderHistory(panel) {
-    const log = ws.log || [];
+  function renderLogbook(panel) {
+    const logbook = (ws.logbook || []).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+    const log     = (ws.log     || []).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    /* Most-recent weight × reps per exercise — first occurrence in date-desc order wins */
+    const latest = new Map(); /* name → { weight, reps, date, totalSets } */
+    logbook.forEach(entry => {
+      (entry.exercises || []).forEach(ex => {
+        const sets = (ex.sets || []).filter(s => s.reps || s.weight);
+        if (!sets.length) return;
+        if (!latest.has(ex.name)) {
+          const last = sets[sets.length - 1];
+          latest.set(ex.name, { weight: last.weight || 0, reps: last.reps || 0, date: entry.date, totalSets: 0 });
+        }
+        latest.get(ex.name).totalSets += sets.length;
+      });
+    });
+
+    const fmtDate = d => new Date(d).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+
     panel.innerHTML = `
-      <div class="section-label">Session History</div>
+      <div class="section-label">Current Stats</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        Most recent logged weight &amp; reps per exercise — updates as you log sets via the exercise modals.
+      </div>
+
+      ${latest.size === 0 ? `
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-body" style="text-align:center;padding:40px;color:var(--muted);font-size:13px">
+            No sets logged yet. Tap any exercise on the Today tab to log sets.
+          </div>
+        </div>` : `
+        <div class="card" style="margin-bottom:20px">
+          <!-- Table header -->
+          <div style="display:grid;grid-template-columns:1fr 80px 70px 60px;gap:8px;padding:8px 16px 6px;border-bottom:1px solid rgba(255,255,255,0.07)">
+            <div style="font-size:10px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">Exercise</div>
+            <div style="font-size:10px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);text-align:right">Weight</div>
+            <div style="font-size:10px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);text-align:right">Reps</div>
+            <div style="font-size:10px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);text-align:right">Sets</div>
+          </div>
+          ${[...latest.entries()].map(([name, rec]) => `
+            <div style="display:grid;grid-template-columns:1fr 80px 70px 60px;gap:8px;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.04)">
+              <div>
+                <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;line-height:1.2">${name}</div>
+                <div style="font-size:10px;color:var(--muted);margin-top:2px">${fmtDate(rec.date)}</div>
+              </div>
+              <div style="text-align:right;font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:var(--accent);line-height:1">
+                ${rec.weight || '—'}<span style="font-size:11px;color:var(--muted)">${rec.weight ? 'lbs' : ''}</span>
+              </div>
+              <div style="text-align:right;font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:var(--fg);line-height:1">
+                ${rec.reps || '—'}
+              </div>
+              <div style="text-align:right;font-size:12px;color:var(--muted)">${rec.totalSets}</div>
+            </div>`).join('')}
+        </div>`}
+
+      <div class="section-label" style="margin-top:4px">Session History</div>
       ${log.length === 0 ? `
         <div class="card">
-          <div class="card-body" style="text-align:center;padding:40px;color:var(--muted);font-size:13px">
-            No sessions logged yet. Log your first workout on the Today tab.
+          <div class="card-body" style="text-align:center;padding:32px;color:var(--muted);font-size:13px">
+            No sessions completed yet. Hit "Complete Session" on the Today tab after your workout.
           </div>
         </div>` :
         log.map(entry => `
-          <div class="card" style="margin-bottom:10px">
-            <div class="card-body" style="padding:14px 16px">
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+          <div class="card" style="margin-bottom:8px">
+            <div class="card-body" style="padding:12px 16px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${entry.notes ? '6px' : '0'}">
                 <div>
-                  <span style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700">${entry.dayName}</span>
+                  <span style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700">${entry.dayName}</span>
                   <span class="badge badge-muted" style="margin-left:8px">${entry.phase}</span>
                 </div>
-                <span style="font-size:11px;color:var(--muted)">${new Date(entry.date).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</span>
+                <span style="font-size:11px;color:var(--muted)">${fmtDate(entry.date)}</span>
               </div>
-              ${entry.notes ? `<div style="font-size:12px;color:rgba(226,234,242,0.65);line-height:1.5;margin-top:4px">${entry.notes}</div>` : ''}
+              ${entry.notes ? `<div style="font-size:12px;color:rgba(226,234,242,0.6);line-height:1.5">${entry.notes}</div>` : ''}
             </div>
           </div>`).join('')}`;
   }

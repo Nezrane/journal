@@ -50,7 +50,7 @@ window.registerPage('nutrition', function initNutrition() {
     ? [...ns.selectedMeals[currentPhase]]
     : [null, null, null, null];
 
-  const recipeCache = {};
+  const expandedMeals = {}; /* tracks which meal-option is expanded: key = "mi-oi" */
 
   /* ── Page shell ── */
   const inner = document.getElementById('nutrition-inner');
@@ -86,7 +86,7 @@ window.registerPage('nutrition', function initNutrition() {
 
     <!-- ── Meal slots ── -->
     <div>
-      <div class="meals-section-title">Select one per meal slot — tap ⓘ for recipe &amp; cultural history</div>
+      <div class="meals-section-title">Select one per meal slot — tap a meal to select, tap again to expand details</div>
       <div class="meals-grid" id="mealsGrid"></div>
     </div>
 
@@ -147,124 +147,60 @@ window.registerPage('nutrition', function initNutrition() {
   /* ── Set saved phase ── */
   document.getElementById('phaseSelect').value = currentPhase;
 
-  /* ── Recipe modal ── */
-  const overlay   = document.getElementById('modalOverlay');
-  const modalBody = document.getElementById('modalBody');
-  const modalEl   = document.querySelector('#page-nutrition .modal');
-
   function catClass(c) {
     return c === 'Simple' ? 'cat-simple' : c === 'Premade' ? 'cat-premade' : 'cat-gourmet';
   }
 
-  function openModal(opt) {
-    document.getElementById('modalEyebrow').textContent    = opt.cuisine + ' · ' + opt.category;
-    document.getElementById('modalTitle').textContent      = opt.name;
-    document.getElementById('modalCuisineTag').textContent = opt.cuisine;
-    document.getElementById('mCalChip').textContent        = opt.calories + ' kcal';
-    document.getElementById('mProChip').textContent        = opt.protein  + 'g Protein';
-    document.getElementById('mCarbChip').textContent       = opt.carbs    + 'g Carbs';
-    document.getElementById('mFatChip').textContent        = opt.fats     + 'g Fat';
-    const cb = document.getElementById('modalCatBadge');
-    cb.textContent = opt.category;
-    cb.className   = 'category-badge ' + catClass(opt.category);
-    overlay.classList.add('open');
-    document.body.style.overflow = 'hidden';
-    fetchRecipe(opt);
-  }
-
-  function closeModal() {
-    if (modalEl) { modalEl.style.transform = ''; modalEl.style.transition = ''; }
-    overlay.classList.remove('open');
-    document.body.style.overflow = '';
-  }
-
-  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-  document.getElementById('modalClose').addEventListener('click', closeModal);
-  setupSwipeDismiss(modalEl, closeModal);
-
-  async function fetchRecipe(opt) {
-    const key = opt.name + '||' + opt.cuisine;
-    if (recipeCache[key]) { renderRecipe(recipeCache[key]); return; }
-    modalBody.innerHTML = `<div class="modal-loading"><div class="spinner"></div><div class="loading-text">Fetching Recipe</div><div class="loading-sub">Ingredients, directions &amp; cultural history…</div></div>`;
-    const prompt = `You are an expert chef and food historian. Generate a detailed recipe card for: "${opt.name}" (${opt.cuisine} cuisine, ${opt.category}, ${opt.calories} kcal, ${opt.protein}g protein, ${opt.carbs}g carbs, ${opt.fats}g fat). Return ONLY valid JSON, no markdown: {"description":"2-3 vivid sentences","history":"3-4 sentences on cultural origin","ingredients":[{"name":"","amount":""}],"directions":["step"]}. 7-11 ingredients, 4-6 steps.`;
-    try {
-      const res    = await fetch('https://api.anthropic.com/v1/messages', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, messages:[{ role:'user', content:prompt }] }) });
-      if (!res.ok) throw new Error('API ' + res.status);
-      const data   = await res.json();
-      const raw    = data.content.map(b => b.text || '').join('').trim().replace(/^```[a-z]*\n?/, '').replace(/\n?```$/, '').trim();
-      const recipe = JSON.parse(raw);
-      recipeCache[key] = recipe;
-      renderRecipe(recipe);
-    } catch (err) {
-      modalBody.innerHTML = `<div class="modal-error"><span class="err-icon">⚠</span>Could not load recipe details.<br><small style="opacity:.4;font-size:11px">${err.message}</small></div>`;
-    }
-  }
-
-  function renderRecipe(r) {
-    const ing   = (r.ingredients || []).map(i => `<div class="ingredient-item"><div class="ingredient-dot"></div><div class="ingredient-name">${i.name}</div><div class="ingredient-amount">${i.amount}</div></div>`).join('');
-    const steps = (r.directions  || []).map((s, i) => `<div class="direction-step"><div class="step-num">${i+1}</div><div class="step-text">${s}</div></div>`).join('');
-    modalBody.innerHTML = `
-      <div class="modal-section"><div class="modal-section-label">About This Dish</div><div class="description-text">${r.description || '—'}</div></div>
-      <div class="modal-section"><div class="modal-section-label">Cultural History</div><div class="history-text">${r.history || '—'}</div></div>
-      <div class="modal-section"><div class="modal-section-label">Ingredients</div><div class="ingredients-grid">${ing}</div></div>
-      <div class="modal-section"><div class="modal-section-label">Directions</div><div class="directions-list">${steps}</div></div>`;
-  }
-
-  /* ── Add custom meal modal ── */
+  /* ── Inline add-custom-meal panel ── */
   let addingMealSlot = null;
 
-  function openAddMealModal(slotIdx) {
+  function openAddMealPanel(slotIdx) {
     addingMealSlot = slotIdx;
-    document.getElementById('modalEyebrow').textContent    = 'Custom Meal';
-    document.getElementById('modalTitle').textContent      = MEAL_TITLES[slotIdx];
-    document.getElementById('modalCuisineTag').textContent = '';
-    document.getElementById('mCalChip').textContent        = '';
-    document.getElementById('mProChip').textContent        = '';
-    document.getElementById('mCarbChip').textContent       = '';
-    document.getElementById('mFatChip').textContent        = '';
-    document.getElementById('modalCatBadge').textContent   = 'Custom';
-    document.getElementById('modalCatBadge').className     = 'category-badge cat-gourmet';
-    modalBody.innerHTML = `
-      <div class="modal-section">
-        <div class="modal-section-label">Add a Custom Meal Option</div>
-        <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
-          <input class="form-input" id="cmName"    placeholder="Meal name" />
-          <input class="form-input" id="cmCuisine" placeholder="Cuisine (e.g. American)" />
-          <select class="app-select" id="cmCat">
-            <option value="Simple">Simple</option>
-            <option value="Premade">Premade</option>
-            <option value="Gourmet">Gourmet</option>
-          </select>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <input class="form-input" id="cmCal"  type="number" placeholder="Calories" style="flex:1;min-width:80px" />
-            <input class="form-input" id="cmPro"  type="number" placeholder="Protein g" style="flex:1;min-width:80px" />
-            <input class="form-input" id="cmCarb" type="number" placeholder="Carbs g" style="flex:1;min-width:80px" />
-            <input class="form-input" id="cmFat"  type="number" placeholder="Fat g" style="flex:1;min-width:80px" />
-          </div>
-          <button class="day-tab active" id="saveCm" style="padding:10px">Add Meal Option</button>
-          <div id="cmError" style="color:var(--danger);font-size:12px;display:none"></div>
+    /* Close any open add-panels */
+    document.querySelectorAll('.add-meal-panel').forEach(p => p.remove());
+    const card = document.querySelector(`[data-slot-card="${slotIdx}"]`);
+    const panel = document.createElement('div');
+    panel.className = 'add-meal-panel';
+    panel.style.cssText = 'padding:14px 16px;border-top:1px solid var(--border);background:rgba(255,255,255,0.03)';
+    panel.innerHTML = `
+      <div style="font-family:'Rajdhani',sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Add Custom Meal</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <input class="form-input" id="cmName"    placeholder="Meal name" />
+        <input class="form-input" id="cmCuisine" placeholder="Cuisine (e.g. American)" />
+        <select class="app-select" id="cmCat">
+          <option value="Simple">Simple</option>
+          <option value="Premade">Premade</option>
+          <option value="Gourmet">Gourmet</option>
+        </select>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input class="form-input" id="cmCal"  type="number" placeholder="Calories" style="flex:1;min-width:70px" />
+          <input class="form-input" id="cmPro"  type="number" placeholder="Protein g" style="flex:1;min-width:70px" />
+          <input class="form-input" id="cmCarb" type="number" placeholder="Carbs g" style="flex:1;min-width:70px" />
+          <input class="form-input" id="cmFat"  type="number" placeholder="Fat g" style="flex:1;min-width:70px" />
         </div>
+        <div style="display:flex;gap:8px">
+          <button class="day-tab active" id="saveCm" style="flex:1;padding:9px">Add Meal</button>
+          <button class="day-tab" id="cancelCm" style="padding:9px 14px">Cancel</button>
+        </div>
+        <div id="cmError" style="color:var(--danger);font-size:12px;display:none"></div>
       </div>`;
-    overlay.classList.add('open');
-    document.body.style.overflow = 'hidden';
+    card.appendChild(panel);
 
-    document.getElementById('saveCm').addEventListener('click', () => {
-      const name  = document.getElementById('cmName').value.trim();
-      const cal   = parseInt(document.getElementById('cmCal').value)  || 0;
-      const pro   = parseInt(document.getElementById('cmPro').value)  || 0;
-      const carb  = parseInt(document.getElementById('cmCarb').value) || 0;
-      const fat   = parseInt(document.getElementById('cmFat').value)  || 0;
-      const errEl = document.getElementById('cmError');
+    panel.querySelector('#cancelCm').addEventListener('click', () => panel.remove());
+    panel.querySelector('#saveCm').addEventListener('click', () => {
+      const name  = panel.querySelector('#cmName').value.trim();
+      const cal   = parseInt(panel.querySelector('#cmCal').value)  || 0;
+      const pro   = parseInt(panel.querySelector('#cmPro').value)  || 0;
+      const carb  = parseInt(panel.querySelector('#cmCarb').value) || 0;
+      const fat   = parseInt(panel.querySelector('#cmFat').value)  || 0;
+      const errEl = panel.querySelector('#cmError');
       if (!name || !cal) { errEl.textContent = 'Name and calories are required.'; errEl.style.display = 'block'; return; }
-      /* STATE.addCustomMeal writes to STATE.data.nutrition.customMeals and saves to IDB */
       STATE.addCustomMeal(currentPhase, addingMealSlot, {
         name,
-        category: document.getElementById('cmCat').value,
-        cuisine:  document.getElementById('cmCuisine').value.trim() || 'Custom',
+        category: panel.querySelector('#cmCat').value,
+        cuisine:  panel.querySelector('#cmCuisine').value.trim() || 'Custom',
         calories: cal, protein: pro, carbs: carb, fats: fat,
       });
-      closeModal();
       renderPhase();
     });
   }
@@ -290,6 +226,7 @@ window.registerPage('nutrition', function initNutrition() {
       const baseLen  = baseCount(currentPhase, mi);
       const card     = document.createElement('div');
       card.className = 'meal-card';
+      card.dataset.slotCard = mi;
       card.innerHTML = `
         <div class="meal-card-header">
           <div class="meal-card-number">Slot ${mi + 1}</div>
@@ -302,8 +239,16 @@ window.registerPage('nutrition', function initNutrition() {
       const list = card.querySelector(`#nl-${mi}`);
       visible.forEach((opt, oi) => {
         const isCustom   = oi >= baseLen;
-        const customIdx  = oi - baseLen; /* index within customMeals[phase][mi] */
+        const customIdx  = oi - baseLen;
         const isSelected = selectedMeals[mi] === oi;
+        const expKey     = `${mi}-${oi}`;
+        const isExpanded = !!expandedMeals[expKey];
+
+        /* Macro bar widths for inline detail */
+        const totalCal = opt.calories || 1;
+        const pCal = (opt.protein * 4 / totalCal * 100).toFixed(0);
+        const cCal = (opt.carbs   * 4 / totalCal * 100).toFixed(0);
+        const fCal = (opt.fats    * 9 / totalCal * 100).toFixed(0);
 
         const item = document.createElement('div');
         item.className = 'meal-option' + (isSelected ? ' selected' : '');
@@ -323,32 +268,58 @@ window.registerPage('nutrition', function initNutrition() {
               <span class="mm mm-c">${opt.carbs}C</span>
               <span class="mm mm-f">${opt.fats}F</span>
             </div>
-            <button class="info-btn">i</button>
+            <button class="expand-btn" title="Show details" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:2px 6px;transition:transform .2s;transform:${isExpanded ? 'rotate(180deg)' : 'none'}">▾</button>
+          </div>
+          <div class="meal-inline-details" style="display:${isExpanded ? 'block' : 'none'};padding:10px 0 4px;border-top:1px solid rgba(255,255,255,0.06);margin-top:8px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:12px;margin-bottom:10px">
+              <div><span style="color:var(--muted)">Cuisine</span><div style="color:var(--text);font-weight:600">${opt.cuisine}</div></div>
+              <div><span style="color:var(--muted)">Category</span><div style="color:var(--text);font-weight:600">${opt.category}</div></div>
+            </div>
+            <div style="font-family:'Rajdhani',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Macro Breakdown</div>
+            <div style="display:flex;flex-direction:column;gap:5px;font-size:11px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="color:#f5a623;min-width:52px">Protein</span>
+                <div style="flex:1;height:5px;background:rgba(255,255,255,0.08);border-radius:3px"><div style="height:100%;width:${pCal}%;background:#f5a623;border-radius:3px"></div></div>
+                <span style="color:var(--text)">${opt.protein}g <span style="color:var(--muted)">(${pCal}%)</span></span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="color:#42c4f5;min-width:52px">Carbs</span>
+                <div style="flex:1;height:5px;background:rgba(255,255,255,0.08);border-radius:3px"><div style="height:100%;width:${cCal}%;background:#42c4f5;border-radius:3px"></div></div>
+                <span style="color:var(--text)">${opt.carbs}g <span style="color:var(--muted)">(${cCal}%)</span></span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="color:#c97bff;min-width:52px">Fats</span>
+                <div style="flex:1;height:5px;background:rgba(255,255,255,0.08);border-radius:3px"><div style="height:100%;width:${fCal}%;background:#c97bff;border-radius:3px"></div></div>
+                <span style="color:var(--text)">${opt.fats}g <span style="color:var(--muted)">(${fCal}%)</span></span>
+              </div>
+            </div>
           </div>`;
 
-        /* Select / deselect by clicking the card (toggle) */
+        /* Tap card body → select/deselect */
         item.addEventListener('click', e => {
-          if (e.target.classList.contains('info-btn') ||
+          if (e.target.classList.contains('expand-btn') ||
               e.target.classList.contains('meal-delete-btn')) return;
           selectMeal(mi, oi, item);
         });
 
-        /* Recipe info button */
-        item.querySelector('.info-btn').addEventListener('click', e => {
+        /* Expand/collapse toggle */
+        item.querySelector('.expand-btn').addEventListener('click', e => {
           e.stopPropagation();
-          openModal(opt);
+          const details = item.querySelector('.meal-inline-details');
+          const btn     = item.querySelector('.expand-btn');
+          const open    = details.style.display === 'none';
+          details.style.display = open ? 'block' : 'none';
+          btn.style.transform   = open ? 'rotate(180deg)' : 'none';
+          if (open) expandedMeals[expKey] = true;
+          else delete expandedMeals[expKey];
         });
 
-        /* Delete custom meal — removes from STATE and re-renders */
+        /* Delete custom meal */
         const delBtn = item.querySelector('.meal-delete-btn');
         if (delBtn) {
           delBtn.addEventListener('click', e => {
             e.stopPropagation();
-            /* If this custom meal was selected, deselect first */
-            if (selectedMeals[mi] === oi) {
-              STATE.selectMeal(currentPhase, mi, null);
-            }
-            /* STATE.removeCustomMeal splices the array and saves to IDB */
+            if (selectedMeals[mi] === oi) STATE.selectMeal(currentPhase, mi, null);
             STATE.removeCustomMeal(currentPhase, mi, customIdx);
             renderPhase();
           });
@@ -360,7 +331,7 @@ window.registerPage('nutrition', function initNutrition() {
       /* + Custom button */
       card.querySelector('.add-meal-btn').addEventListener('click', () => {
         if (opts.length >= 10) { alert('Maximum 10 meal options per slot reached.'); return; }
-        openAddMealModal(mi);
+        openAddMealPanel(mi);
       });
     });
   }
