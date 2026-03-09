@@ -34,31 +34,9 @@ window.registerPage('business', function initBusiness() {
   const inner = document.getElementById('business-inner');
   inner.innerHTML = `
     ${buildPageHeader('Envosta HQ', 'Business', 'OS',
-      'Multi-venture · Hormozi roadmap · Blueprint step tracking.',
-      `<div style="display:flex;gap:8px">
-         <button class="day-tab" id="bizExport" title="Download state as JSON">⬇ Export</button>
-         <button class="day-tab" id="bizImport" title="Restore state from JSON">⬆ Import</button>
-       </div>`
+      'Multi-venture · Hormozi roadmap · Blueprint step tracking.'
     )}
-
-    <!-- Venture selector tabs — one tab per venture + new -->
-    <div class="day-tabs" style="flex-wrap:wrap;margin-bottom:18px" id="ventureTabs"></div>
-
-    <!-- Selected venture content -->
     <div id="bizPanel"></div>`;
-
-  /* ── Export / Import ── */
-  inner.querySelector('#bizExport').addEventListener('click', () => STATE.exportJSON());
-  inner.querySelector('#bizImport').addEventListener('click', async () => {
-    try {
-      await STATE.importFromFile();
-      buildVentureTabs();
-      renderPanel();
-      alert('State imported successfully.');
-    } catch (err) {
-      alert('Import failed: ' + err.message);
-    }
-  });
 
   /* ══════════════════════════════════════════════════════════════
      VENTURE TABS — rebuilt whenever ventures change
@@ -67,33 +45,22 @@ window.registerPage('business', function initBusiness() {
   let showingNew      = false;
 
   function buildVentureTabs() {
-    const tabBar = document.getElementById('ventureTabs');
-    tabBar.innerHTML = '';
-
-    /* One tab per venture */
-    ventures().forEach(v => {
-      const btn = document.createElement('button');
-      btn.className   = 'day-tab' + (v.id === activeVentureId && !showingNew ? ' active' : '');
-      btn.textContent = v.icon + ' ' + v.name;
-      btn.addEventListener('click', () => {
-        activeVentureId = v.id;
-        showingNew      = false;
-        buildVentureTabs();
-        renderPanel();
-      });
-      tabBar.appendChild(btn);
-    });
-
-    /* + New Venture tab at end */
-    const newBtn = document.createElement('button');
-    newBtn.className   = 'day-tab' + (showingNew ? ' active' : '');
-    newBtn.textContent = '+ New Venture';
-    newBtn.addEventListener('click', () => {
-      showingNew = true;
+    const tabs = [
+      ...ventures().map(v => ({ id: v.id, label: v.icon + ' ' + v.name })),
+      { id: '__new__', label: '+ New Venture' },
+    ];
+    const activeId = showingNew ? '__new__' : (activeVentureId || '__new__');
+    setPageTabs(inner, tabs, activeId, id => {
+      if (id === '__new__') {
+        showingNew = true;
+        activeVentureId = null;
+      } else {
+        showingNew = false;
+        activeVentureId = id;
+      }
       buildVentureTabs();
       renderPanel();
     });
-    tabBar.appendChild(newBtn);
   }
 
   function renderPanel() {
@@ -151,7 +118,10 @@ window.registerPage('business', function initBusiness() {
               <div style="font-size:12px;color:var(--muted)">${v.description || 'No description set'}</div>
             </div>
           </div>
-          <span class="badge badge-warn">Hormozi Stage ${v.hormozi_stage} — ${stage.name}</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            ${v.boardType ? `<span class="badge badge-accent" style="text-transform:capitalize">${v.boardType === 'saas' ? '⚡ SaaS' : v.boardType === 'product' ? '📦 Product' : '🤝 Service'}</span>` : ''}
+            <span class="badge badge-warn">Hormozi Stage ${v.hormozi_stage} — ${stage.name}</span>
+          </div>
         </div>
         <div class="card-body">
           <!-- Editable metrics -->
@@ -388,10 +358,44 @@ window.registerPage('business', function initBusiness() {
                 </label>`).join('')}
             </div>
           </div>
+          <!-- Board type picker -->
+          <div style="margin-top:20px">
+            <label class="form-label" style="margin-bottom:10px;display:block">Board Type</label>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px" id="boardTypePicker">
+              <div class="bp-card" data-bt="saas" style="padding:14px;border-radius:10px;border:1px solid var(--accent);background:rgba(124,106,247,0.08);cursor:pointer">
+                <div style="font-size:20px;margin-bottom:6px">⚡</div>
+                <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;margin-bottom:2px">SaaS</div>
+                <div style="font-size:11px;color:var(--muted);line-height:1.4">Software · Subscription · Digital product</div>
+              </div>
+              <div class="bp-card" data-bt="product" style="padding:14px;border-radius:10px;border:1px solid var(--border);cursor:pointer">
+                <div style="font-size:20px;margin-bottom:6px">📦</div>
+                <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;margin-bottom:2px">Product</div>
+                <div style="font-size:11px;color:var(--muted);line-height:1.4">Physical goods · E-commerce · Manufacturing</div>
+              </div>
+              <div class="bp-card" data-bt="service" style="padding:14px;border-radius:10px;border:1px solid var(--border);cursor:pointer">
+                <div style="font-size:20px;margin-bottom:6px">🤝</div>
+                <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;margin-bottom:2px">Service</div>
+                <div style="font-size:11px;color:var(--muted);line-height:1.4">Agency · Consulting · Freelance</div>
+              </div>
+            </div>
+          </div>
+
           <button class="phase-btn active" id="createVenture" style="margin-top:20px;padding:10px 24px;font-size:14px">Create Venture</button>
           <div id="nvError" style="color:var(--danger);font-size:12px;margin-top:8px;display:none"></div>
         </div>
       </div>`;
+
+    /* Board type card picker wiring */
+    panel.querySelectorAll('.bp-card[data-bt]').forEach(c => {
+      c.addEventListener('click', () => {
+        panel.querySelectorAll('.bp-card[data-bt]').forEach(x => {
+          x.style.borderColor = 'var(--border)';
+          x.style.background  = '';
+        });
+        c.style.borderColor = 'var(--accent)';
+        c.style.background  = 'rgba(124,106,247,0.08)';
+      });
+    });
 
     panel.querySelector('#createVenture').addEventListener('click', () => {
       const name  = panel.querySelector('#nvName').value.trim();
@@ -402,7 +406,8 @@ window.registerPage('business', function initBusiness() {
       errEl.style.display = 'none';
 
       /* STATE.addVenture → ventures[] → IDB */
-      const newId = STATE.addVenture(name, icon, desc);
+      const boardType = panel.querySelector('.bp-card[data-bt][style*="var(--accent)"]')?.dataset?.bt || 'saas';
+      const newId = STATE.addVenture(name, icon, desc, boardType);
 
       /* Attach selected blueprints */
       panel.querySelectorAll('#bpCheckboxes input:checked').forEach(cb => {

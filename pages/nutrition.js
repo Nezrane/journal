@@ -55,22 +55,23 @@ window.registerPage('nutrition', function initNutrition() {
   /* ── Page shell ── */
   const inner = document.getElementById('nutrition-inner');
   inner.innerHTML = `
-    ${buildPageHeader('Daily Planner', 'Nutrition', 'Dashboard',
-      'Select one option per meal slot — all combinations hit your daily target.',
-      `<div class="legend">
-         <div class="legend-item"><div class="legend-dot" style="background:var(--simple)"></div>Simple</div>
-         <div class="legend-item"><div class="legend-dot" style="background:var(--premade)"></div>Premade</div>
-         <div class="legend-item"><div class="legend-dot" style="background:var(--gourmet)"></div>Gourmet</div>
-       </div>
-       <div class="phase-label">Phase</div>
-       <select class="app-select" id="phaseSelect">
-         <option value="bulk">Bulk</option>
-         <option value="maintain">Maintain</option>
-         <option value="cut">Cut</option>
-       </select>`
-    )}
+    ${buildPageHeader('Daily Planner', 'Nutrition', 'Dashboard')}
 
-    <!-- ── Macro summary pinned at top — targets + currently selected side by side ── -->
+    <!-- ── Phase + legend bar ── -->
+    <div class="nutrition-controls-bar">
+      <div class="phase-toggle" id="phaseToggle">
+        <button class="phase-btn${currentPhase === 'bulk'     ? ' active' : ''}" data-phase="bulk">Bulk</button>
+        <button class="phase-btn${currentPhase === 'maintain' ? ' active' : ''}" data-phase="maintain">Maintain</button>
+        <button class="phase-btn${currentPhase === 'cut'      ? ' active' : ''}" data-phase="cut">Cut</button>
+      </div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--simple)"></div>Simple</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--premade)"></div>Premade</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--gourmet)"></div>Gourmet</div>
+      </div>
+    </div>
+
+    <!-- ── Macro summary ── -->
     <div class="card" id="macroSummaryCard">
       <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
         <div class="card-title">Daily Macro Summary</div>
@@ -103,49 +104,18 @@ window.registerPage('nutrition', function initNutrition() {
     <div class="section-label" style="margin-top:8px">Nutrition Principles</div>
     <div class="grid-2" id="nutritionPrinciples"></div>
 
-    <!-- ── Macro Calculator ── -->
-    <div class="section-label" style="margin-top:8px">Macro Calculator</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Manual inputs → auto-calculated targets. Use as a starting point — adjust based on real results.</div>
-    <div class="card" id="macroCalcCard">
-      <div class="card-body" style="padding:18px 20px">
+  `;
 
-        <!-- Body weight slider -->
-        <div style="margin-bottom:18px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <label class="form-label">Body Weight</label>
-            <span style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:var(--accent)" id="calcWeightDisplay">175 lbs</span>
-          </div>
-          <input type="range" id="calcWeight" min="120" max="280" value="175" step="1" class="macro-slider" />
-        </div>
-
-        <!-- Goal toggle -->
-        <div style="margin-bottom:18px">
-          <div class="form-label" style="margin-bottom:8px">Goal</div>
-          <div class="phase-toggle" id="calcGoalToggle">
-            <button class="phase-btn" data-goal="cut">Cut</button>
-            <button class="phase-btn active" data-goal="maintain">Maintain</button>
-            <button class="phase-btn" data-goal="bulk">Bulk</button>
-          </div>
-        </div>
-
-        <!-- Activity level -->
-        <div style="margin-bottom:20px">
-          <div class="form-label" style="margin-bottom:8px">Activity Level</div>
-          <div class="phase-toggle" id="calcActivityToggle">
-            <button class="phase-btn" data-activity="12">Sedentary</button>
-            <button class="phase-btn active" data-activity="14">Light</button>
-            <button class="phase-btn" data-activity="15.5">Moderate</button>
-            <button class="phase-btn" data-activity="17">Active</button>
-          </div>
-        </div>
-
-        <!-- Results -->
-        <div class="macro-calc-results" id="calcResults"></div>
-      </div>
-    </div>`;
-
-  /* ── Set saved phase ── */
-  document.getElementById('phaseSelect').value = currentPhase;
+  /* ── Phase toggle ── */
+  inner.querySelectorAll('#phaseToggle [data-phase]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      inner.querySelectorAll('#phaseToggle [data-phase]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentPhase = btn.dataset.phase;
+      STATE.setNutritionPhase(currentPhase);
+      renderPhase();
+    });
+  });
 
   function catClass(c) {
     return c === 'Simple' ? 'cat-simple' : c === 'Premade' ? 'cat-premade' : 'cat-gourmet';
@@ -353,7 +323,6 @@ window.registerPage('nutrition', function initNutrition() {
   function updateSummary() {
     let cal = 0, pro = 0, carb = 0, fat = 0, cnt = 0;
     const allMeals = getMeals(currentPhase);
-    const ph       = BASE_PHASES[currentPhase];
     selectedMeals.forEach((oi, mi) => {
       if (oi !== null && allMeals[mi][oi]) {
         const o = allMeals[mi][oi];
@@ -362,31 +331,36 @@ window.registerPage('nutrition', function initNutrition() {
       }
     });
 
+    /* Targets come from the macro calculator (saved in Settings) */
+    const targets = computeMacros(ns.calcWeight, ns.calcGoal, ns.calcActivity);
+
     const grid = document.getElementById('macroSummaryGrid');
     if (!grid) return;
 
-    /* Two-column per macro: target | selected with fill bar */
     const macros = [
-      { key:'cal',  label:'Calories', selected:cal,  target:ph.calories, unit:'kcal', color:'var(--accent3)' },
-      { key:'pro',  label:'Protein',  selected:pro,  target:ph.protein,  unit:'g',    color:'#f5a623' },
-      { key:'carb', label:'Carbs',    selected:carb, target:ph.carbs,    unit:'g',    color:'#42c4f5' },
-      { key:'fat',  label:'Fats',     selected:fat,  target:ph.fats,     unit:'g',    color:'#c97bff' },
+      { label:'Calories', eaten:cal,  target:targets.calories, unit:'kcal', color:'var(--accent3)' },
+      { label:'Protein',  eaten:pro,  target:targets.protein,  unit:'g',    color:'#f5a623' },
+      { label:'Carbs',    eaten:carb, target:targets.carbs,    unit:'g',    color:'#42c4f5' },
+      { label:'Fats',     eaten:fat,  target:targets.fats,     unit:'g',    color:'#c97bff' },
     ];
 
     grid.innerHTML = macros.map(m => {
-      const pct   = m.target > 0 ? Math.min(100, (m.selected / m.target) * 100) : 0;
-      const over  = m.selected > m.target;
-      const exact = m.selected === m.target && cnt === 4;
+      const pct  = m.target > 0 ? Math.min(100, (m.eaten / m.target) * 100) : 0;
+      const over = m.eaten > m.target;
       return `
         <div class="macro-summary-item">
-          <div class="macro-summary-label">${m.label}</div>
-          <div class="macro-summary-row">
-            <span class="macro-summary-sel" style="color:${m.color}">${m.selected}<span class="macro-summary-unit">${m.unit}</span></span>
-            <span class="macro-summary-target">/ ${m.target}${m.unit}</span>
+          <div class="macro-summary-header">
+            <span class="macro-summary-label">${m.label}</span>
+            <span class="macro-summary-values">
+              <span style="color:${m.color};font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700">${m.eaten}</span>
+              <span class="macro-summary-sep">/</span>
+              <span class="macro-summary-target">${m.target}${m.unit}</span>
+            </span>
           </div>
           <div class="macro-bar-track">
-            <div class="macro-bar-fill" style="width:${pct}%;background:${m.color};opacity:${over ? '1' : '0.7'}"></div>
+            <div class="macro-bar-fill" style="width:${pct}%;background:${m.color};${over ? 'opacity:1' : ''}"></div>
           </div>
+          <div class="macro-summary-sub">${Math.round(pct)}% of daily target</div>
         </div>`;
     }).join('');
 
@@ -394,24 +368,16 @@ window.registerPage('nutrition', function initNutrition() {
     const badge = document.getElementById('matchBadge');
     badge.className = 'match-badge';
     if (cnt === 4) {
-      if (cal === ph.calories && pro === ph.protein && carb === ph.carbs && fat === ph.fats) {
+      const diff = cal - targets.calories;
+      if (Math.abs(diff) <= 50) {
         badge.classList.add('perfect');
-        badge.innerHTML = `<div class="checkmark"><svg viewBox="0 0 8 8" fill="none"><polyline points="1,4 3,6 7,2" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></div> Macros perfectly matched ✓`;
+        badge.innerHTML = `<div class="checkmark"><svg viewBox="0 0 8 8" fill="none"><polyline points="1,4 3,6 7,2" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></div> On target ✓`;
       } else {
         badge.classList.add('mismatch');
-        const d = cal - ph.calories;
-        badge.innerHTML = `&#9888; ${d > 0 ? '+' : ''}${d} kcal from target`;
+        badge.innerHTML = `&#9888; ${diff > 0 ? '+' : ''}${diff} kcal from target`;
       }
     }
   }
-
-  /* ── Phase selector ── */
-  document.getElementById('phaseSelect').addEventListener('change', e => {
-    currentPhase = e.target.value;
-    /* STATE.setNutritionPhase writes to nutrition.currentPhase and saves to IDB */
-    STATE.setNutritionPhase(currentPhase);
-    renderPhase();
-  });
 
   /* ══════════════════════════════════════════════════════════════
      WHOLE FOODS — compact multi-column grid (all categories in one card)
@@ -442,85 +408,6 @@ window.registerPage('nutrition', function initNutrition() {
         <div style="font-size:12px;color:rgba(226,234,242,0.72);line-height:1.6">${p.body}</div>
       </div>`;
   });
-
-  /* ══════════════════════════════════════════════════════════════
-     MACRO CALCULATOR (moved from workout page)
-     Pure client-side — no STATE writes.
-     Formula:
-       TDEE = weight(lbs) × activityFactor
-       Bulk: +300 cal | Maintain: +0 | Cut: −500 cal
-       Protein: 1.0 g/lb | Fat: 0.35 g/lb | Carbs: remainder
-  ══════════════════════════════════════════════════════════════ */
-  let calcWeight   = 175;
-  let calcGoal     = 'maintain';
-  let calcActivity = 14;
-
-  function calcMacros() {
-    const tdee    = calcWeight * calcActivity;
-    const goalAdj = calcGoal === 'bulk' ? 300 : calcGoal === 'cut' ? -500 : 0;
-    const calories = Math.round(tdee + goalAdj);
-    const protein  = Math.round(calcWeight * 1.0);
-    const fat      = Math.round(calcWeight * 0.35);
-    const carbs    = Math.max(0, Math.round((calories - protein * 4 - fat * 9) / 4));
-    const pPct = Math.round((protein * 4 / calories) * 100);
-    const cPct = Math.round((carbs   * 4 / calories) * 100);
-    const fPct = Math.round((fat     * 9 / calories) * 100);
-
-    document.getElementById('calcResults').innerHTML = `
-      <div class="macro-calc-main">
-        <div class="macro-calc-calories">
-          <span class="macro-calc-cal-val">${calories.toLocaleString()}</span>
-          <span class="macro-calc-cal-unit">kcal/day</span>
-        </div>
-      </div>
-      <div class="macro-calc-breakdown">
-        <div class="macro-calc-macro" style="--mc:${pPct}%;--col:#f5a623">
-          <div class="macro-calc-bar"><div class="macro-calc-bar-fill"></div></div>
-          <div class="macro-calc-val">${protein}g</div>
-          <div class="macro-calc-lbl">Protein (${pPct}%)</div>
-        </div>
-        <div class="macro-calc-macro" style="--mc:${cPct}%;--col:#42c4f5">
-          <div class="macro-calc-bar"><div class="macro-calc-bar-fill"></div></div>
-          <div class="macro-calc-val">${carbs}g</div>
-          <div class="macro-calc-lbl">Carbs (${cPct}%)</div>
-        </div>
-        <div class="macro-calc-macro" style="--mc:${fPct}%;--col:#c97bff">
-          <div class="macro-calc-bar"><div class="macro-calc-bar-fill"></div></div>
-          <div class="macro-calc-val">${fat}g</div>
-          <div class="macro-calc-lbl">Fats (${fPct}%)</div>
-        </div>
-      </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:12px;line-height:1.5">
-        TDEE ≈ ${Math.round(tdee).toLocaleString()} kcal · ${calcGoal === 'bulk' ? '+300 surplus' : calcGoal === 'cut' ? '−500 deficit' : 'maintenance'}
-      </div>`;
-  }
-
-  /* Wire up macro calculator controls */
-  document.getElementById('calcWeight').addEventListener('input', e => {
-    calcWeight = parseInt(e.target.value);
-    document.getElementById('calcWeightDisplay').textContent = calcWeight + ' lbs';
-    calcMacros();
-  });
-
-  document.querySelectorAll('#calcGoalToggle [data-goal]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('#calcGoalToggle [data-goal]').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      calcGoal = btn.dataset.goal;
-      calcMacros();
-    });
-  });
-
-  document.querySelectorAll('#calcActivityToggle [data-activity]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('#calcActivityToggle [data-activity]').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      calcActivity = parseFloat(btn.dataset.activity);
-      calcMacros();
-    });
-  });
-
-  calcMacros(); /* initial render */
 
   renderPhase();
 });

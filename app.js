@@ -41,7 +41,7 @@ window.registerPage = function(name, fn) {
 /* ══════════════════════════════════════════════════════════════════
    ROUTER
 ════════════════════════════════════════════════════════════════ */
-const VALID_PAGES = ['dashboard', 'nutrition', 'workout', 'business', 'wealth', 'creative'];
+const VALID_PAGES = ['dashboard', 'nutrition', 'workout', 'business', 'wealth', 'passions', 'settings'];
 
 /**
  * Navigate to a page.
@@ -61,6 +61,11 @@ function navigateTo(page) {
   /* Activate the nav item */
   const navItem = document.querySelector(`.nav-item[data-page="${page}"]`);
   if (navItem) navItem.classList.add('active');
+
+  /* Sync profile drawer active state */
+  document.querySelectorAll('.drawer-nav-item').forEach(n => n.classList.remove('active'));
+  const drawerItem = document.querySelector(`.drawer-nav-item[data-page="${page}"]`);
+  if (drawerItem) drawerItem.classList.add('active');
 
   /* Update URL hash (no page reload) */
   history.replaceState(null, '', '#' + page);
@@ -94,6 +99,135 @@ window.addEventListener('hashchange', () => {
 
 
 /* ══════════════════════════════════════════════════════════════════
+   MOBILE TOP BAR CONTROLS
+   Hamburger → profile drawer slide-out
+   Bell → notifications panel drop-down
+   Drawer nav items → navigate + close drawer
+════════════════════════════════════════════════════════════════ */
+
+(function initMobileControls() {
+  const hamburgerBtn   = document.getElementById('hamburgerBtn');
+  const drawerBackdrop = document.getElementById('drawerBackdrop');
+  const profileDrawer  = document.getElementById('profileDrawer');
+  const drawerClose    = document.getElementById('drawerClose');
+  const notifBtn       = document.getElementById('notifBtn');      // mobile topbar bell
+  const notifPanel     = document.getElementById('notifPanel');
+  const notifBadge     = document.getElementById('notifBadge');    // mobile topbar badge
+  const notifMarkRead  = document.getElementById('notifMarkRead');
+  const notifList      = document.getElementById('notifList');
+
+  if (!hamburgerBtn) return; // not in DOM (shouldn't happen)
+
+  /* ── Notifications data ── */
+  const NOTIFS = [
+    { icon: '🏋️', title: 'Workout Reminder',  text: 'Today is your Upper day — stay on schedule.', time: 'Now',       unread: true  },
+    { icon: '🎯', title: 'Weekly Check-in',    text: 'Log your body weight and BF% to track progress.', time: '2h ago',   unread: true  },
+    { icon: '🍽️', title: 'Nutrition',          text: 'Select your meals for today to hit your macros.', time: '5h ago',   unread: false },
+    { icon: '⭐', title: 'North Star',         text: '$50K MRR · 200 lbs · 15% BF — keep your eyes on it.', time: 'Yesterday', unread: false },
+  ];
+
+  let unreadCount = NOTIFS.filter(n => n.unread).length;
+
+  function renderNotifs() {
+    notifList.innerHTML = NOTIFS.map(n => `
+      <div class="notif-item${n.unread ? ' unread' : ''}">
+        <div class="notif-item-icon">${n.icon}</div>
+        <div class="notif-item-body">
+          <div class="notif-item-title">${n.title}</div>
+          <div class="notif-item-text">${n.text}</div>
+          <div class="notif-item-time">${n.time}</div>
+        </div>
+        ${n.unread ? '<div class="notif-unread-dot"></div>' : ''}
+      </div>`).join('');
+  }
+
+  function updateBadge() {
+    const val     = unreadCount > 0 ? String(unreadCount) : '';
+    const display = unreadCount > 0 ? 'flex' : 'none';
+    // Mobile topbar badge
+    notifBadge.textContent   = val;
+    notifBadge.style.display = display;
+    // All in-header page notif badges (one per page, rendered by buildPageHeader)
+    document.querySelectorAll('.page-notif-badge').forEach(b => {
+      b.textContent   = val;
+      b.style.display = display;
+    });
+  }
+
+  renderNotifs();
+  updateBadge();
+
+  /* ── Drawer open / close ── */
+  function openDrawer() {
+    profileDrawer.classList.add('open');
+    drawerBackdrop.classList.add('open');
+    closeNotifPanel();
+  }
+
+  function closeDrawer() {
+    profileDrawer.classList.remove('open');
+    drawerBackdrop.classList.remove('open');
+  }
+
+  hamburgerBtn.addEventListener('click', () =>
+    profileDrawer.classList.contains('open') ? closeDrawer() : openDrawer());
+  drawerClose.addEventListener('click', closeDrawer);
+  drawerBackdrop.addEventListener('click', closeDrawer);
+
+  /* ── Drawer nav items ── */
+  document.querySelectorAll('.drawer-nav-item').forEach(item => {
+    item.addEventListener('click', e => {
+      e.preventDefault();
+      navigateTo(item.dataset.page);
+      closeDrawer();
+    });
+  });
+
+  /* ── Notifications panel open / close ── */
+  function openNotifPanel(triggerBtn) {
+    if (triggerBtn) {
+      const rect = triggerBtn.getBoundingClientRect();
+      notifPanel.style.top   = (rect.bottom + 8) + 'px';
+      notifPanel.style.right = (window.innerWidth - rect.right) + 'px';
+      notifPanel.style.left  = 'auto';
+    }
+    notifPanel.classList.add('open');
+    closeDrawer();
+  }
+
+  function closeNotifPanel() {
+    notifPanel.classList.remove('open');
+  }
+
+  // Mobile topbar bell
+  notifBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    notifPanel.classList.contains('open') ? closeNotifPanel() : openNotifPanel(notifBtn);
+  });
+
+  // Desktop in-header bells (one per page) — event delegation
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('.page-notif-btn');
+    if (btn) {
+      e.stopPropagation();
+      notifPanel.classList.contains('open') ? closeNotifPanel() : openNotifPanel(btn);
+      return;
+    }
+    if (!notifPanel.contains(e.target) && e.target !== notifBtn) {
+      closeNotifPanel();
+    }
+  });
+
+  notifMarkRead.addEventListener('click', () => {
+    NOTIFS.forEach(n => n.unread = false);
+    unreadCount = 0;
+    updateBadge();
+    renderNotifs();
+  });
+})();
+
+
+/* ══════════════════════════════════════════════════════════════════
    SHARED UTILITIES
    Helper functions available to all page modules.
 ════════════════════════════════════════════════════════════════ */
@@ -110,8 +244,58 @@ window.buildPageHeader = function(eyebrow, titleMain, titleAccent, subtitle, con
         <h1 class="page-title">${titleMain} <span>${titleAccent}</span></h1>
         ${subtitle ? `<div class="page-subtitle">${subtitle}</div>` : ''}
       </div>
-      ${controlsHTML ? `<div class="page-header-right">${controlsHTML}</div>` : ''}
-    </div>`;
+      <div class="page-header-right">
+        ${controlsHTML ? `<div class="page-header-controls">${controlsHTML}</div>` : ''}
+        <div class="page-tabs-desktop"></div>
+        <button class="page-notif-btn" aria-label="Notifications">
+          <span class="page-notif-icon">🔔</span>
+          <span class="page-notif-badge"></span>
+        </button>
+      </div>
+    </div>
+    <div class="page-tabs-mobile"></div>`;
+};
+
+/**
+ * Renders page-level tabs into both the desktop header slot and the mobile bar.
+ * tabs: [{ id: string, label: string }]
+ * activeId: the currently active tab id
+ * onChange: function(id) called when a tab is clicked
+ */
+window.setPageTabs = function(inner, tabs, activeId, onChange) {
+  function build(isMobile) {
+    return tabs.map(t => {
+      const cls = 'ptab-' + (isMobile ? 'mobile' : 'desktop') + (t.id === activeId ? ' active' : '');
+      return `<button class="${cls}" data-ptab="${t.id}">${t.label}</button>`;
+    }).join('');
+  }
+
+  const desktop = inner.querySelector('.page-tabs-desktop');
+  const mobile  = inner.querySelector('.page-tabs-mobile');
+  if (desktop) desktop.innerHTML = build(false);
+  if (mobile)  mobile.innerHTML  = build(true);
+
+  inner.querySelectorAll('[data-ptab]').forEach(btn => {
+    btn.addEventListener('click', () => onChange(btn.dataset.ptab));
+  });
+};
+
+/**
+ * Computes daily macro targets from calculator inputs.
+ * Shared by nutrition.js (for summary bars) and settings.js (for the calculator UI).
+ * Returns { calories, protein, carbs, fats, tdee }
+ */
+window.computeMacros = function(weight, goal, activity) {
+  weight   = weight   || 175;
+  goal     = goal     || 'maintain';
+  activity = activity || 14;
+  const tdee     = weight * activity;
+  const goalAdj  = goal === 'bulk' ? 300 : goal === 'cut' ? -500 : 0;
+  const calories = Math.round(tdee + goalAdj);
+  const protein  = Math.round(weight * 1.0);
+  const fat      = Math.round(weight * 0.35);
+  const carbs    = Math.max(0, Math.round((calories - protein * 4 - fat * 9) / 4));
+  return { calories, protein, carbs, fats: fat, tdee: Math.round(tdee) };
 };
 
 /**

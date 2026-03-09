@@ -308,6 +308,118 @@ window.APP_DATA = {
         { name:'Measure & Double Down',      description:'Cut content types that do not convert. Double the format that does.', keyActions:['Review analytics monthly — top 10 posts by traffic and leads','Cut the 2 lowest-performing content formats','Scale production of the highest-converting format'] },
       ],
     },
+    {
+      id: 'social_media',
+      name: 'Social Media Strategy',
+      description: 'Build a consistent social presence that drives brand awareness and inbound interest.',
+      steps: [
+        { name: 'Define Target Audience',   description: 'Know exactly who you are talking to before posting anything.', keyActions: ['Write a 1-paragraph ideal customer profile', 'List 3 platforms where they spend time', 'Identify 5 accounts they already follow and why'] },
+        { name: 'Choose 1–2 Channels',      description: 'Focus beats spreading thin. Own one channel before expanding.', keyActions: ['Pick primary channel (LinkedIn, Instagram, Twitter/X, or TikTok)', 'Set up a fully optimised profile — bio, link, branding', 'Research the top 10 performing accounts in your niche'] },
+        { name: 'Define Content Pillars',   description: '3–4 recurring themes that anchor your posting strategy.', keyActions: ['Write your 3 content pillars (e.g. education, behind-scenes, social proof)', 'Map each pillar to a buyer awareness stage', 'Draft 5 post ideas per pillar'] },
+        { name: 'Build a Content Calendar', description: 'Plan 30 days of content in advance — consistency is the only strategy.', keyActions: ['Create a 30-day posting calendar (use Notion or a spreadsheet)', 'Batch-create content one week ahead', 'Commit to a minimum posting frequency (3×/week)'] },
+        { name: 'Launch & Post for 30 Days', description: 'Post every day for 30 days without checking analytics. Build the habit first.', keyActions: ['Post on schedule for 30 consecutive days', 'Reply to every comment and DM within 24 hours', 'Engage on 5 other accounts per day to grow reach'] },
+        { name: 'Engagement Strategy',      description: 'Algorithm rewards accounts that engage others, not just those that post.', keyActions: ['Comment meaningfully on 5 posts per day in your niche', 'DM 3 new potential followers per week with genuine value', 'Reply to every comment on your posts for the first 60 minutes after posting'] },
+        { name: 'Analyse & Iterate',        description: 'After 30 days, cut what performs worst and double what performs best.', keyActions: ['Pull analytics: top 5 posts by reach and engagement', 'Identify which content pillar drives the most followers', 'Adjust content mix for the next 30 days based on data'] },
+        { name: 'Convert Followers to Leads', description: 'Social media is top of funnel — you need a path to revenue.', keyActions: ['Add a clear CTA to your bio and top posts', 'Create a lead magnet linked from your profile', 'Track how many followers become email subscribers or booked calls monthly'] },
+      ],
+    },
+    {
+      id: 'website',
+      name: 'Website Blueprint',
+      description: 'Build a site that converts visitors into leads and clearly communicates your value.',
+      steps: [
+        { name: 'Domain & Hosting',      description: 'Get the infrastructure right before building anything.', keyActions: ['Register a .com domain — short, memorable, easy to spell', 'Set up hosting (Vercel, Netlify, or managed WordPress)', 'Connect custom domain and verify SSL certificate'] },
+        { name: 'Define Core Pages',     description: 'Every site needs these 5 pages before anything else.', keyActions: ['Home — hero, value prop, social proof, CTA', 'About — story, credibility, mission', 'Services or Product — what you offer and for whom', 'Pricing — clear and direct (hide nothing)', 'Contact — multiple ways to reach you'] },
+        { name: 'Hero & Value Prop',     description: 'Above the fold should answer: who you help, how, and what they get.', keyActions: ['Write a headline that names the customer and the outcome', 'Add a subheading that explains how you deliver it', 'Above-fold CTA button — primary action only, no distractions'] },
+        { name: 'Social Proof',          description: 'Every page should have proof that your claims are real.', keyActions: ['Add 3+ testimonials with name, title, and photo', 'Add logos of clients or publications you\'ve appeared in', 'Add one quantified result (e.g. "42% more leads in 30 days")'] },
+        { name: 'SEO Basics',            description: 'Set up the foundation for organic discovery before you need it.', keyActions: ['Write unique meta title and description for each page', 'Use your target keyword in the H1 and first paragraph', 'Set up Google Search Console and submit sitemap'] },
+        { name: 'Analytics Setup',       description: 'You can\'t improve what you can\'t measure.', keyActions: ['Install Google Analytics 4', 'Set up a conversion goal (form submit, CTA click)', 'Install Microsoft Clarity or Hotjar for session recordings'] },
+        { name: 'Speed & Mobile',        description: 'Slow sites lose 50%+ of visitors before they see your offer.', keyActions: ['Run Google PageSpeed Insights — target 90+ on mobile', 'Compress all images (use WebP format)', 'Test the entire site on iPhone and Android'] },
+        { name: 'Launch & Test',         description: 'Ship it. A live site that converts 0.5% is worth more than a perfect site that doesn\'t exist.', keyActions: ['QA every page on desktop and mobile', 'Test every form and CTA — do they work?', 'Send the first 50 people through and track what they do'] },
+      ],
+    },
+    {
+      id: 'outbound',
+      name: 'Outbound Marketing',
+      description: 'Build a repeatable cold outreach engine that generates booked meetings on demand.',
+      steps: [
+        { name: 'Build Target List',       description: 'Quality of list determines quality of results. Define before you build.', keyActions: ['Define 3 ICP criteria (industry, company size, role)', 'Build a list of 500+ verified contacts using Apollo, Hunter, or LinkedIn', 'Verify email addresses — invalid emails kill deliverability'] },
+        { name: 'Research & Personalise', description: 'Generic messages get ignored. One personal hook per prospect changes everything.', keyActions: ['Find 1–2 hooks per prospect (recent post, company news, shared connection)', 'Write a custom first line for every email — no templates for line 1', 'Segment your list by persona so the core message stays relevant'] },
+        { name: 'Write Email Sequence',   description: '4–5 email sequence: hook, value, proof, ask, breakup.', keyActions: ['Email 1: Personal hook + problem you solve (3 sentences max)', 'Email 3: Social proof — name a result you got for someone like them', 'Email 5: Breakup email — short, direct, removes pressure'] },
+        { name: 'LinkedIn Outreach',      description: 'LinkedIn works differently than email — lead with connection, then value.', keyActions: ['Send connection request with a 1-sentence note — no pitch', 'Follow up 48h after connecting with a value-first message', 'Never pitch in the first DM — earn the right to pitch first'] },
+        { name: 'Set Up Sending Infra',   description: 'Sending from your main domain will destroy deliverability. Do it right.', keyActions: ['Set up a separate sending domain (e.g. trymybiz.com)', 'Warm up the domain for 2–3 weeks before full volume', 'Set up SPF, DKIM, and DMARC records on all sending domains'] },
+        { name: 'Launch & Track',         description: 'Target: 2–5% booked meeting rate on outbound sequences.', keyActions: ['Send 50–100 personalised emails per day maximum', 'Track open rate (target 50%+), reply rate (target 10%+), meeting rate (target 3%+)', 'Log every reply — categorise as interested, not now, wrong person, unsubscribe'] },
+        { name: 'A/B Test Messaging',    description: 'Small wording changes can 2× your reply rate.', keyActions: ['Test 2 different subject lines per week', 'Test 2 different value propositions and compare reply rates', 'Never change more than one variable at a time'] },
+        { name: 'Scale What Works',       description: 'Once messaging converts, scale with systems — not more personal time.', keyActions: ['Document the exact sequence that generates meetings', 'Hire an SDR or VA to run outreach at 3× current volume', 'Automate follow-up sequences while keeping personalised opening lines'] },
+      ],
+    },
+    {
+      id: 'inbound',
+      name: 'Inbound Marketing',
+      description: 'Build a content engine that compounds over time and brings leads to you.',
+      steps: [
+        { name: 'Keyword Research',       description: 'Find out exactly what your buyer is searching for — then answer it better than anyone.', keyActions: ['Identify 50 keywords your ICP actively searches', 'Prioritise by intent (problem-aware vs. solution-aware)', 'Use Ahrefs, SEMrush, or free tools (Google Search Console + AnswerThePublic)'] },
+        { name: 'Content Strategy',       description: 'Map content to the buyer journey — awareness, consideration, decision.', keyActions: ['Define 3 content categories: educational, comparison, conversion', 'Create a 90-day editorial calendar', 'Assign each article a target keyword, buyer stage, and CTA'] },
+        { name: 'First 10 Articles',      description: 'Publish 10 high-quality SEO articles before expecting results. The algorithm needs signal.', keyActions: ['Each article: 1,500+ words, target keyword, clear structure', 'Internal link every new article to 2 existing ones', 'Track initial rankings at 30, 60, and 90 days'] },
+        { name: 'Lead Magnets',           description: 'Give something genuinely useful in exchange for an email address.', keyActions: ['Create 1–2 lead magnets (template, calculator, guide, checklist)', 'Lead magnet must solve the same problem as your paid offer — just partially', 'Add lead magnet CTA to every relevant article'] },
+        { name: 'Landing Pages',          description: 'Each lead magnet needs its own dedicated page optimised for one action.', keyActions: ['Build a landing page for each lead magnet — no nav, one CTA', 'Headline = the outcome, not the deliverable', 'A/B test 2 headlines within 30 days of launch'] },
+        { name: 'Email Nurture Sequence', description: 'The email sequence after opt-in does the selling — your content just gets the lead.', keyActions: ['Write a 5–7 email sequence: deliver value, build trust, make offer', 'Email 1 delivers the lead magnet immediately', 'Email 5 introduces your core product/service with social proof'] },
+        { name: 'Conversion Optimisation', description: 'Small CRO improvements on high-traffic pages compound dramatically.', keyActions: ['Install session recording on top 5 traffic pages', 'Test 2 new CTAs per month on the highest-traffic article', 'Review heatmaps monthly — where do readers drop off?'] },
+        { name: 'Measure & Compound',     description: 'Inbound takes 6–12 months to compound. Measure the right metrics or you\'ll quit too early.', keyActions: ['Track: organic sessions, opt-in rate, lead-to-customer rate monthly', 'Update top 3 articles quarterly to maintain rankings', 'Double down on the content format and topic that drives the most leads'] },
+      ],
+    },
+  ],
+
+  /* ── Passion Blueprint Templates ─────────────────────────────────
+     Stackable sub-blueprint frameworks for passion boards.
+     Each passion can stack multiple sub-blueprints.
+  ────────────────────────────────────────────────────────────────── */
+  passionBlueprintTemplates: [
+    {
+      id: 'chords',
+      name: 'Chords',
+      description: 'From open chords to advanced voicings — a complete chord roadmap.',
+      steps: [
+        { name: 'Open Chords',           description: 'The essential 8: Am, Em, Dm, E, A, D, G, C. These unlock 90% of acoustic songs.', keyActions: ['Learn all 8 open chords cleanly — no buzzing, no muting', 'Practice each chord 1 minute per day for a week', 'Strum through a simple song using only open chords'] },
+        { name: 'F Barre Chord',         description: 'The wall every guitarist must climb. Master this and the whole neck opens up.', keyActions: ['Place index finger flat across all 6 strings at fret 1', 'Check each string rings clearly — adjust finger position daily', 'Practice F → C → G → Am transition 50 times per session'] },
+        { name: 'A-Shape Barre Chords',  description: 'Moveable shapes rooted on the A string unlock all major and minor chords.', keyActions: ['Learn B major and Bm as A-shape barre chords at fret 2', 'Move the shape to every fret — name the chord at each position', 'Practice B → E → F#m → C#m (a common key of B progression)'] },
+        { name: '7th Chords',            description: 'Add colour and tension — essential for blues, country, and jazz.', keyActions: ['Learn open G7, C7, D7, A7, E7 and B7', 'Learn moveable dominant 7th barre shape (E-shape root)', 'Improvise a 12-bar blues using only dominant 7th chords'] },
+        { name: 'Suspended Chords',      description: 'Sus2 and Sus4 chords create movement and tension without changing root.', keyActions: ['Learn Dsus2, Dsus4, Asus2, Asus4 in open position', 'Practice D → Dsus4 → D → Dsus2 riff (classic rock move)', 'Find 2 songs that use sus chords and learn them'] },
+        { name: 'Chord Transitions',     description: 'Smooth transitions matter more than knowing 50 chords.', keyActions: ['Set metronome to 60 BPM — change chord every beat for 2 minutes', 'Identify your slowest transition pair and drill it daily', 'Target: 60+ clean changes per minute for your common chord pairs'] },
+        { name: 'Chord Inversions',      description: 'Playing the same chord with a different bass note creates smooth bass lines.', keyActions: ['Learn G/B (G chord with B in bass)', 'Learn D/F# and Am/E inversions — use them in a song', 'Write a chord progression that uses at least 2 slash chords'] },
+        { name: 'Jazz Voicings',         description: 'Moveable 4-note voicings that work for jazz, R&B, and advanced country.', keyActions: ['Learn maj7, min7, and dom7 shapes on the 5th-string root', 'Learn the same three shapes on the 6th-string root', 'Play a ii-V-I in the key of C using only jazz voicings'] },
+      ],
+    },
+    {
+      id: 'covers',
+      name: 'Cover Songs',
+      description: 'A step-by-step framework for learning and performing any cover song.',
+      steps: [
+        { name: 'Song Selection',        description: 'Choose songs that stretch you but are achievable in 2–4 weeks.', keyActions: ['Pick a song one difficulty level above your current best', 'Confirm you can identify all chords by ear or find a reliable chart', 'Set a target date: full performance-ready in 3 weeks'] },
+        { name: 'Listen & Analyze',      description: 'Understand the structure before you touch the guitar.', keyActions: ['Listen 3 times without the guitar — map out verse, chorus, bridge, outro', 'Identify the key, tempo, and time signature', 'Note any unusual chord changes, time signature shifts, or key modulations'] },
+        { name: 'Chord Progression',     description: 'Learn the foundation before worrying about melody or fills.', keyActions: ['Write out every chord in every section', 'Play through the full progression slowly with a metronome', 'Get every section sounding clean before moving forward'] },
+        { name: 'Melody & Lyrics',       description: 'Singing while playing is a coordination skill — train it separately first.', keyActions: ['Learn the melody on guitar alone (pick it out note by note)', 'Speak the lyrics in rhythm over the chord progression', 'Slowly combine singing and playing — start with just the chorus'] },
+        { name: 'Style & Feel',          description: 'Don\'t just copy the recording — find your version of the song.', keyActions: ['Identify 2 signature licks or fills from the original and learn them', 'Decide: where will you add dynamics, pauses, or your own inflection?', 'Record yourself and compare to the original — what feels authentic vs. forced?'] },
+        { name: 'Up to Speed',           description: 'Gradually increase tempo until you\'re at performance speed.', keyActions: ['Use a metronome — start at 70% of target tempo', 'Increase by 2–5 BPM every 2 practice sessions', 'Only move up in tempo when the previous tempo is 100% clean'] },
+        { name: 'Record a Demo',         description: 'Recording reveals mistakes you don\'t notice in the room.', keyActions: ['Record a rough take on your phone — no editing', 'Listen back and note the top 3 weakest moments', 'Fix those 3 moments, then re-record'] },
+        { name: 'Performance Ready',     description: 'A song is only ready when you can play it three times in a row without stopping.', keyActions: ['Play start-to-finish three consecutive times without stopping', 'Perform it for one person — even if it\'s a family member on a couch', 'Add it to your set or repertoire list'] },
+      ],
+    },
+    {
+      id: 'theory',
+      name: 'Music Theory',
+      description: 'Intervals, scales, chords, and progressions — from the ground up.',
+      steps: [
+        { name: 'Intervals',             description: 'The foundation of everything. Know every interval by sound and name.', keyActions: ['Memorize all 12 intervals: name, semitone count, and a song reference', 'Complete 10 minutes of interval ear training daily (use ToneSavvy or EarMaster)', 'Identify intervals in 3 songs you already know by ear'] },
+        { name: 'Major Scale',           description: 'The measuring stick all other scales and chords are built from.', keyActions: ['Memorize the WWHWWWH pattern', 'Play the C major scale in all 5 CAGED positions on guitar', 'Play all 12 major scales — know every note in each key'] },
+        { name: 'Minor Scales',          description: 'Natural, harmonic, and melodic minor — three flavors, all essential.', keyActions: ['Learn the natural minor scale (WHWWHWW) and relate it to its relative major', 'Learn the harmonic minor (raised 7th) and identify its distinctive sound', 'Learn the melodic minor and understand why it ascends and descends differently'] },
+        { name: 'Triad Construction',    description: 'Every chord starts as a 3-note triad. Know how each type is built.', keyActions: ['Build major (1-3-5), minor (1-b3-5), dim (1-b3-b5), and aug (1-3-#5) triads', 'Play all 4 triad types rooted on every note of the chromatic scale', 'Identify triad types by ear in 5 songs'] },
+        { name: '7th Chords',            description: 'The language of jazz, blues, R&B, and sophisticated country.', keyActions: ['Build Maj7, dom7, min7, min7b5, and dim7 chords from the formula', 'Play all 5 seventh chord types rooted on C, G, D, A, E', 'Learn the diatonic 7th chords in the key of C major (Cmaj7, Dm7, Em7...)'] },
+        { name: 'Chord Progressions',    description: 'Progressions are the grammar of music — patterns that create tension and resolution.', keyActions: ['Memorize I-IV-V-I in all 12 major keys', 'Learn I-vi-IV-V and ii-V-I and identify them in 5 pop songs', 'Understand the Nashville Number System and apply it to 3 songs'] },
+        { name: 'Key Signatures',        description: 'Fluency in all 12 keys unlocks every song in every genre.', keyActions: ['Memorize the circle of fifths — all 12 major keys and relative minors', 'Know every sharp and flat in every key without looking', 'Transpose a simple song into 3 different keys'] },
+        { name: 'Modes',                 description: 'Seven modes, each with its own character and practical application.', keyActions: ['Learn all 7 mode names and their parent scale positions (Ionian, Dorian... Locrian)', 'Play Dorian over a minor chord and Mixolydian over a dominant chord — hear the difference', 'Learn one song or riff that clearly demonstrates each of the 4 most common modes'] },
+      ],
+    },
   ],
 
   /* ── Business ────────────────────────────────────────────────── */

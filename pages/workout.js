@@ -99,24 +99,22 @@ window.registerPage('workout', function initWorkout() {
     ${buildPageHeader('JEFF NIPPARD UL+PPL', 'Workout', 'Program',
       'Recovery (Wks 1–5) → Ramping (Wks 6–12). Tap any exercise for notes & swaps.'
     )}
-
-    <div class="day-tabs" id="mainWorkoutTabs" style="margin-bottom:8px;flex-wrap:wrap">
-      <button class="day-tab active" data-wtab="today">Routine</button>
-      <button class="day-tab"        data-wtab="logbook">Progress</button>
-    </div>
-
     <div id="workoutTabPanel"></div>`;
 
   /* ── Tab routing ── */
   let activeTab = 'today';
-  inner.querySelectorAll('[data-wtab]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      inner.querySelectorAll('[data-wtab]').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      activeTab = btn.dataset.wtab;
+  const WORKOUT_TABS = [
+    { id: 'today',   label: 'Routine'  },
+    { id: 'logbook', label: 'Progress' },
+  ];
+
+  function buildTabs() {
+    setPageTabs(inner, WORKOUT_TABS, activeTab, id => {
+      activeTab = id;
+      buildTabs();
       renderTab();
     });
-  });
+  }
 
   function renderTab() {
     const panel = document.getElementById('workoutTabPanel');
@@ -125,6 +123,9 @@ window.registerPage('workout', function initWorkout() {
       case 'logbook': renderLogbook(panel);  break;
     }
   }
+
+  buildTabs();
+  renderTab();
 
   /* ══════════════════════════════════════════════════════════════
      TODAY TAB
@@ -610,7 +611,7 @@ const dayData   = currentDay === 'Rest' ? REST_DAY : (currentPhaseData[currentDa
 
     panel.innerHTML = `
 
-      <!-- ══ Body Metrics hero card ══ -->
+      <!-- ══ Body Metrics + Progress Photos combined card ══ -->
       <div class="card" style="margin-bottom:16px;overflow:hidden">
         <div style="padding:14px 20px 10px;border-bottom:1px solid var(--border)">
           <div style="font-family:'Rajdhani',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted)">Body Metrics</div>
@@ -640,10 +641,10 @@ const dayData   = currentDay === 'Rest' ? REST_DAY : (currentPhaseData[currentDa
           </div>
 
         </div>
-      </div>
 
-      <!-- ══ Progress Photos ══ -->
-      <div id="progressPicsSection"></div>
+        <!-- Progress Photos (inside same card) -->
+        <div id="progressPicsSection" style="border-top:1px solid var(--border)"></div>
+      </div>
 
       <!-- ══ Lift Logbook ══ -->
       <div class="card" style="margin-bottom:16px;overflow:hidden">
@@ -778,19 +779,17 @@ const dayData   = currentDay === 'Rest' ? REST_DAY : (currentPhaseData[currentDa
   function renderProgressPics(panel) {
     const pics = ws.progressPics || [];
     panel.innerHTML = `
-      <div class="card" style="margin-bottom:16px;overflow:hidden">
-        <div style="padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-          <div style="font-family:'Rajdhani',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted)">Progress Photos</div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <input type="text" class="form-input" id="picNoteInput" placeholder="Label (e.g. Week 3 front)" style="width:160px;padding:4px 10px;font-size:11px" />
-            <button class="day-tab active" id="uploadPicBtn" style="padding:5px 12px;font-size:11px;white-space:nowrap">+ Add</button>
-            <input type="file" id="picFileInput" accept="image/*" style="display:none" />
-          </div>
+      <div style="padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted)">Progress Photos</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="text" class="form-input" id="picNoteInput" placeholder="Label (e.g. Week 3 front)" style="width:160px;padding:4px 10px;font-size:11px" />
+          <button class="day-tab active" id="uploadPicBtn" style="padding:5px 12px;font-size:11px;white-space:nowrap">+ Add</button>
+          <input type="file" id="picFileInput" accept="image/*" style="display:none" />
         </div>
-        ${pics.length === 0 ? `
-          <div style="padding:28px;text-align:center;color:var(--muted);font-size:13px">No photos yet — add your first check-in above.</div>` : `
-          <div class="progress-pics-strip" id="picsStrip" style="padding:12px 16px"></div>`}
-      </div>`;
+      </div>
+      ${pics.length === 0 ? `
+        <div style="padding:28px;text-align:center;color:var(--muted);font-size:13px">No photos yet — add your first check-in above.</div>` : `
+        <div class="progress-pics-strip" id="picsStrip"></div>`}`;
 
     panel.querySelector('#uploadPicBtn').addEventListener('click', () => {
       panel.querySelector('#picFileInput').click();
@@ -814,7 +813,7 @@ const dayData   = currentDay === 'Rest' ? REST_DAY : (currentPhaseData[currentDa
         const card = document.createElement('div');
         card.className = 'progress-pic-card';
         card.innerHTML = `
-          <img src="${pic.dataUrl}" alt="Progress ${idx + 1}" class="progress-pic-img" />
+          <img src="${pic.dataUrl}" alt="Progress ${idx + 1}" class="progress-pic-img" draggable="false" />
           <div class="progress-pic-meta">
             <div class="progress-pic-date">${new Date(pic.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>
             ${pic.note ? `<div class="progress-pic-note">${pic.note}</div>` : ''}
@@ -826,6 +825,23 @@ const dayData   = currentDay === 'Rest' ? REST_DAY : (currentPhaseData[currentDa
           renderProgressPics(panel);
         });
         strip.appendChild(card);
+      });
+
+      /* ── Click-and-drag to scroll ── */
+      let isDragging = false, startX = 0, scrollLeft = 0;
+      strip.addEventListener('mousedown', e => {
+        isDragging = true;
+        startX     = e.pageX - strip.offsetLeft;
+        scrollLeft = strip.scrollLeft;
+        strip.style.cursor = 'grabbing';
+        strip.style.userSelect = 'none';
+      });
+      strip.addEventListener('mouseleave', () => { isDragging = false; strip.style.cursor = ''; });
+      strip.addEventListener('mouseup',    () => { isDragging = false; strip.style.cursor = ''; strip.style.userSelect = ''; });
+      strip.addEventListener('mousemove', e => {
+        if (!isDragging) return;
+        e.preventDefault();
+        strip.scrollLeft = scrollLeft - (e.pageX - strip.offsetLeft - startX);
       });
     }
   }

@@ -76,11 +76,95 @@
        On desktop: fixed left sidebar
        On mobile: bottom tab bar
   ═══════════════════════════════════════════════ -->
+  <!-- ══ MOBILE TOP BAR (≤768px only) ══ -->
+  <div class="mobile-topbar" id="mobileTopbar">
+    <button class="topbar-btn" id="hamburgerBtn" aria-label="Open menu">
+      <div class="hamburger-lines">
+        <span></span><span></span><span></span>
+      </div>
+    </button>
+    <div class="topbar-wordmark">
+      <span class="topbar-brand-icon">K</span>
+      <span class="topbar-brand-name">Koltyn OS</span>
+    </div>
+    <button class="topbar-btn topbar-notif-btn" id="notifBtn" aria-label="Notifications">
+      <span class="topbar-notif-icon">🔔</span>
+      <span class="notif-badge" id="notifBadge">2</span>
+    </button>
+  </div>
+
+  <!-- ══ PROFILE DRAWER (slide-out from left on mobile) ══ -->
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+  <div class="profile-drawer" id="profileDrawer">
+    <div class="drawer-profile-header">
+      <div class="drawer-avatar">KO</div>
+      <div class="drawer-profile-info">
+        <div class="drawer-profile-name">Koltyn</div>
+        <div class="drawer-profile-sub">Life Operating System</div>
+      </div>
+      <button class="drawer-close-btn" id="drawerClose" aria-label="Close">✕</button>
+    </div>
+    <div class="drawer-north-star">
+      <div class="drawer-ns-label">North Star</div>
+      <div class="drawer-ns-text">$50K MRR · 200 lbs · 15% BF</div>
+    </div>
+    <div class="drawer-divider"></div>
+    <div class="drawer-nav">
+      <a class="drawer-nav-item" data-page="dashboard"  href="#dashboard">
+        <span class="drawer-nav-icon">⬡</span><span>Dashboard</span>
+      </a>
+      <a class="drawer-nav-item" data-page="nutrition"  href="#nutrition">
+        <span class="drawer-nav-icon">◈</span><span>Nutrition</span>
+      </a>
+      <a class="drawer-nav-item" data-page="workout"    href="#workout">
+        <span class="drawer-nav-icon">◉</span><span>Workout</span>
+      </a>
+      <a class="drawer-nav-item" data-page="business"   href="#business">
+        <span class="drawer-nav-icon">◧</span><span>Business</span>
+      </a>
+      <a class="drawer-nav-item" data-page="wealth"     href="#wealth">
+        <span class="drawer-nav-icon">◈</span><span>Wealth</span>
+      </a>
+      <a class="drawer-nav-item" data-page="passions"   href="#passions">
+        <span class="drawer-nav-icon">✦</span><span>Passions</span>
+      </a>
+    </div>
+    <div class="drawer-divider"></div>
+    <div class="drawer-nav">
+      <a class="drawer-nav-item" data-page="settings" href="#settings">
+        <span class="drawer-nav-icon">⚙</span><span>Settings</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- ══ NOTIFICATIONS PANEL ══ -->
+  <div class="notif-panel" id="notifPanel">
+    <div class="notif-panel-header">
+      <span class="notif-panel-title">Notifications</span>
+      <button class="notif-mark-read" id="notifMarkRead">Mark all read</button>
+    </div>
+    <div class="notif-list" id="notifList"></div>
+  </div>
+
   <nav class="sidebar" id="sidebar">
 
-    <!-- App logo / wordmark -->
+    <!-- App logo -->
     <div class="nav-brand">
-      <div class="nav-brand-icon">K</div>
+      <svg class="nav-logo-mark" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" width="34" height="34" aria-hidden="true">
+        <defs>
+          <linearGradient id="navLogoGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#4fc3f7"/>
+            <stop offset="100%" stop-color="#7c6af7"/>
+          </linearGradient>
+        </defs>
+        <rect width="36" height="36" rx="9" fill="url(#navLogoGrad)"/>
+        <!-- K mark -->
+        <line x1="11" y1="9"  x2="11" y2="27" stroke="#fff" stroke-width="2.8" stroke-linecap="round"/>
+        <line x1="11" y1="18" x2="25" y2="9"  stroke="#fff" stroke-width="2.8" stroke-linecap="round"/>
+        <line x1="11" y1="18" x2="26" y2="27" stroke="#fff" stroke-width="2.8" stroke-linecap="round"/>
+        <!-- OS dot accent -->
+        <circle cx="30" cy="29" r="2.2" fill="#fff" opacity="0.5"/>
+      </svg>
       <div class="nav-brand-text">
         <div class="nav-brand-name">Koltyn OS</div>
         <div class="nav-brand-sub">Life Operating System</div>
@@ -121,17 +205,27 @@
 
       <div class="nav-divider"></div>
 
-      <a class="nav-item" data-page="creative" href="#creative">
-        <span class="nav-icon">♫</span>
-        <span class="nav-label">Creative</span>
+      <a class="nav-item" data-page="passions" href="#passions">
+        <span class="nav-icon">✦</span>
+        <span class="nav-label">Passions</span>
+      </a>
+
+      <div class="nav-divider nav-settings-divider"></div>
+
+      <a class="nav-item nav-settings-item" data-page="settings" href="#settings">
+        <span class="nav-icon">⚙</span>
+        <span class="nav-label">Settings</span>
       </a>
 
     </div>
 
-    <!-- Current goal pinned at bottom of sidebar -->
-    <div class="nav-goal">
-      <div class="nav-goal-label">North Star</div>
-      <div class="nav-goal-text">$50K MRR · 200 lbs · 15% BF</div>
+    <!-- Profile pinned at bottom of sidebar -->
+    <div class="nav-profile">
+      <div class="nav-profile-avatar">KO</div>
+      <div class="nav-profile-info">
+        <div class="nav-profile-name">Koltyn</div>
+        <div class="nav-profile-goal">$50K · 200 lbs · 15% BF</div>
+      </div>
     </div>
 
   </nav><!-- /sidebar -->
@@ -215,9 +309,14 @@
       <div class="page-inner" id="wealth-inner"></div>
     </section>
 
-    <!-- ── CREATIVE PAGE ─────────────────────── -->
-    <section class="page" id="page-creative" data-accent="creative">
-      <div class="page-inner" id="creative-inner"></div>
+    <!-- ── PASSIONS PAGE ─────────────────────── -->
+    <section class="page" id="page-passions" data-accent="creative">
+      <div class="page-inner" id="passions-inner"></div>
+    </section>
+
+    <!-- ── SETTINGS PAGE ─────────────────────── -->
+    <section class="page" id="page-settings" data-accent="dashboard">
+      <div class="page-inner" id="settings-inner"></div>
     </section>
 
   </main><!-- /main-content -->
@@ -231,7 +330,8 @@
   <script src="pages/workout.js"></script>
   <script src="pages/business.js"></script>
   <script src="pages/wealth.js"></script>
-  <script src="pages/creative.js"></script>
+  <script src="pages/passions.js"></script>
+  <script src="pages/settings.js"></script>
 
   <!-- ── Service Worker Registration ──
        Registers sw.js which caches all app files for offline use.

@@ -39,8 +39,9 @@
   /* Base backgrounds */
   --bg:     #0b0f14;
   --bg2:    #0f1520;
-  --card:   #131a24;
-  --card2:  #182030;
+  --card:    #131a24;
+  --card2:   #182030;
+  --surface: #131a24;
   --border: #1e2d40;
 
   /* Default accent (overridden per page) */
@@ -316,28 +317,47 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
   text-transform: uppercase;
 }
 
-/* North Star goal pinned at bottom of sidebar */
-.nav-goal {
-  padding: 14px 16px;
+/* Profile card pinned at bottom of sidebar */
+.nav-profile {
+  padding: 12px 14px;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.nav-goal-label {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 9px;
-  letter-spacing: 2.5px;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 4px;
-}
-
-.nav-goal-text {
+.nav-profile-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4fc3f7, #7c6af7);
+  color: #fff;
   font-family: 'Rajdhani', sans-serif;
   font-size: 11px;
-  font-weight: 600;
-  color: #f5c842;
-  line-height: 1.4;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+.nav-profile-name {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.nav-profile-goal {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 
@@ -382,7 +402,7 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
 ════════════════════════════════════════════════════════════════ */
 .page-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 16px;
@@ -425,6 +445,115 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+/* ── Desktop page tabs (top-right of header) ── */
+.page-tabs-desktop {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ptab-desktop {
+  padding: 9px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.ptab-desktop:hover:not(.active) {
+  background: rgba(255,255,255,0.04);
+  color: var(--fg);
+}
+.ptab-desktop.active {
+  background: rgba(255,255,255,0.08);
+  color: var(--fg);
+  border-color: var(--accent);
+}
+
+/* ── Inline notif button (desktop only, rightmost in header) ── */
+.page-notif-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.page-notif-btn:hover { background: rgba(255,255,255,0.06); color: var(--fg); }
+.page-notif-icon { font-size: 15px; line-height: 1; }
+.page-notif-badge {
+  position: absolute;
+  top: 4px; right: 4px;
+  min-width: 16px; height: 16px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #000;
+  font-size: 9px;
+  font-weight: 700;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  line-height: 1;
+}
+
+@media (min-width: 1025px) {
+  .page-notif-btn { display: flex; }
+}
+
+/* ── Mobile page tabs (below header, text + underline) ── */
+.page-tabs-mobile {
+  display: none;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  margin: 0 0 18px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.page-tabs-mobile::-webkit-scrollbar { display: none; }
+
+.ptab-mobile {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 10px 18px;
+  color: var(--muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+  margin-bottom: -1px;
+  flex-shrink: 0;
+}
+.ptab-mobile:hover:not(.active) { color: var(--fg); }
+.ptab-mobile.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* Responsive: swap which version shows */
+@media (max-width: 1024px) {
+  .page-tabs-desktop { display: none; }
+  .page-tabs-mobile  { display: flex; }
 }
 
 
@@ -732,7 +861,7 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
 }
 
 .app-select:focus { border-color: var(--accent); }
-.app-select option { background: #131a24; }
+.app-select option { background: var(--surface); }
 
 
 /* ══════════════════════════════════════════════════════════════════
@@ -1005,6 +1134,16 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
 .direction-step  { display: flex; gap: 11px; align-items: flex-start; }
 .step-num  { width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15); color: var(--accent); font-family: 'Rajdhani', sans-serif; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .step-text { font-size: 13px; line-height: 1.7; color: rgba(226,234,242,0.84); flex: 1; }
+
+/* Nutrition controls bar — phase toggle + legend */
+.nutrition-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
 
 /* Nutrition legend */
 .legend       { display: flex; gap: 14px; align-items: center; }
@@ -1701,7 +1840,8 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
   .nav-item   { justify-content: center; padding: 10px 6px; }
   .nav-label  { display: none; }
   .nav-icon   { font-size: 16px; width: auto; }
-  .nav-goal   { display: none; }
+  .nav-profile { justify-content: center; padding: 12px 6px; }
+  .nav-profile-info { display: none; }
   .nav-divider { margin: 4px 2px; }
 
   .workout-day-grid { grid-template-columns: 1fr; }
@@ -1755,12 +1895,17 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
   .nav-icon  { font-size: 16px; width: auto; }
   .nav-label { display: block; font-size: 9px; letter-spacing: 0; }
   .nav-divider { display: none; }
-  .nav-goal    { display: none; }
+  .nav-profile { display: none; }
 
   /* Main content fills screen, leaves room for bottom tabs */
   .main-content { margin-left: 0; height: calc(100vh - 60px); }
 
   .page-inner { padding: 18px 14px 30px; }
+
+  /* Hide inline notif button on mobile (use topbar bell instead) */
+  .page-notif-btn { display: none !important; }
+
+  .page-header { border-bottom: none; padding-bottom: 12px; }
 
   .meals-grid    { grid-template-columns: 1fr; }
   .summary-macros { grid-template-columns: repeat(2, 1fr); }
@@ -2478,56 +2623,58 @@ select.form-input option { background: #141920; color: var(--text); }
 .macro-summary-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+}
+
+.macro-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .macro-summary-label {
   font-family: 'Rajdhani', sans-serif;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 2.5px;
+  letter-spacing: 2px;
   text-transform: uppercase;
   color: var(--muted);
 }
 
-.macro-summary-row {
+.macro-summary-values {
   display: flex;
   align-items: baseline;
-  gap: 5px;
+  gap: 4px;
 }
 
-.macro-summary-sel {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.macro-summary-unit {
-  font-size: 11px;
+.macro-summary-sep {
+  font-size: 12px;
   color: var(--muted);
-  font-weight: 400;
-  margin-left: 1px;
 }
 
 .macro-summary-target {
   font-family: 'Rajdhani', sans-serif;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
-  margin-left: auto;
+}
+
+.macro-summary-sub {
+  font-size: 10px;
+  color: rgba(255,255,255,0.3);
 }
 
 .macro-bar-track {
-  height: 4px;
-  background: rgba(255,255,255,0.06);
-  border-radius: 4px;
+  height: 8px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 6px;
   overflow: hidden;
 }
 
 .macro-bar-fill {
   height: 100%;
-  border-radius: 4px;
-  transition: width 0.45s cubic-bezier(0.22,1,0.36,1);
+  border-radius: 6px;
+  opacity: 0.8;
+  transition: width 0.5s cubic-bezier(0.22,1,0.36,1);
   max-width: 100%;
 }
 
@@ -2883,13 +3030,14 @@ select.form-input option { background: #141920; color: var(--text); }
   display: flex;
   gap: 12px;
   overflow-x: auto;
-  padding-bottom: 8px;
+  padding: 12px 16px 0;
   -webkit-overflow-scrolling: touch;
   scroll-snap-type: x mandatory;
+  cursor: grab;
 }
-
-.progress-pics-strip::-webkit-scrollbar       { height: 4px; }
-.progress-pics-strip::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.progress-pics-strip:active { cursor: grabbing; }
+.progress-pics-strip::-webkit-scrollbar { display: none; }
+.progress-pics-strip { scrollbar-width: none; }
 
 .progress-pic-card {
   flex-shrink: 0;
@@ -2953,3 +3101,346 @@ select.form-input option { background: #141920; color: var(--text); }
   background: rgba(255,107,107,0.15);
   border-color: var(--danger);
 }
+
+
+/* =================================================================
+   23. MOBILE TOP BAR
+   Fixed 54px header visible only on <=768px.
+   Hamburger left · wordmark center · notifications right.
+================================================================= */
+
+.mobile-topbar {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 54px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  z-index: 400;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  padding-top: env(safe-area-inset-top, 0px);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+}
+
+.topbar-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.topbar-btn:hover { background: rgba(255,255,255,0.06); }
+
+.hamburger-lines { display: flex; flex-direction: column; gap: 5px; }
+.hamburger-lines span {
+  display: block;
+  width: 20px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--muted);
+  transition: transform 0.22s, opacity 0.22s;
+}
+
+.topbar-wordmark { display: flex; align-items: center; gap: 8px; }
+
+.topbar-brand-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: var(--accent);
+  color: #fff;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.topbar-brand-name {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--fg);
+}
+
+.topbar-notif-btn { position: relative; }
+.topbar-notif-icon { font-size: 19px; }
+
+.notif-badge {
+  position: absolute;
+  top: 6px; right: 6px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--danger);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg);
+}
+
+
+/* =================================================================
+   24. PROFILE DRAWER
+   Slides in from the left, sits above backdrop, below modals.
+================================================================= */
+
+.drawer-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 480;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+.drawer-backdrop.open { display: block; }
+
+.profile-drawer {
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  width: 285px;
+  max-width: 85vw;
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+  z-index: 500;
+  transform: translateX(-100%);
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.profile-drawer.open { transform: translateX(0); }
+
+.drawer-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 16px 16px;
+}
+
+.drawer-avatar {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #000;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.drawer-profile-info { flex: 1; min-width: 0; }
+
+.drawer-profile-name {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--fg);
+}
+
+.drawer-profile-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+.drawer-close-btn {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.05);
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.drawer-north-star {
+  margin: 0 12px 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+}
+
+.drawer-ns-label {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 3px;
+}
+
+.drawer-ns-text { font-size: 12px; color: var(--fg); line-height: 1.4; }
+
+.drawer-divider { height: 1px; background: var(--border); margin: 6px 12px; }
+
+.drawer-nav { padding: 6px 8px; }
+
+.drawer-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: 10px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+  cursor: pointer;
+}
+.drawer-nav-item:hover { background: rgba(255,255,255,0.06); color: var(--fg); }
+.drawer-nav-item.active { background: rgba(255,255,255,0.06); color: var(--accent); }
+
+.drawer-nav-icon { font-size: 16px; width: 22px; text-align: center; flex-shrink: 0; }
+
+
+/* =================================================================
+   25. NOTIFICATIONS PANEL
+================================================================= */
+
+/* Panel — desktop: positioned via JS (getBoundingClientRect); mobile: edge-flush */
+.notif-panel {
+  display: none;
+  position: fixed;
+  width: 340px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  z-index: 490;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.55);
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+}
+.notif-panel.open { display: flex; }
+
+/* Mobile: override JS positioning — snap below topbar */
+@media (max-width: 1024px) {
+  .notif-panel {
+    top: calc(54px + env(safe-area-inset-top, 0px)) !important;
+    right: 0 !important;
+    left: auto !important;
+    width: min(340px, 100vw);
+    border-radius: 0 0 0 14px;
+    border-left: 1px solid var(--border);
+    border-top: none;
+    border-right: none;
+  }
+}
+
+.notif-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+}
+
+.notif-panel-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--fg);
+}
+
+.notif-mark-read {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 13px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.notif-item:last-child { border-bottom: none; }
+.notif-item.unread { background: rgba(255,255,255,0.025); }
+
+.notif-item-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+.notif-item-body { flex: 1; min-width: 0; }
+
+.notif-item-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--fg);
+  margin-bottom: 2px;
+}
+.notif-item-text { font-size: 11px; color: var(--muted); line-height: 1.4; }
+.notif-item-time { font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 4px; }
+
+.notif-unread-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+
+
+/* =================================================================
+   26. MOBILE LAYOUT ADJUSTMENTS
+   Account for the 54px top bar that appears at <=768px.
+================================================================= */
+
+/* Show topbar on mobile + tablet (up to iPad Pro) */
+@media (max-width: 1024px) {
+  .mobile-topbar { display: flex; }
+
+  .main-content {
+    margin-top: calc(54px + env(safe-area-inset-top, 0px));
+  }
+
+  /* Settings only accessible via hamburger drawer on mobile/tablet — hide from sidebar */
+  .nav-settings-item,
+  .nav-settings-divider { display: none; }
+}
+
+/* Bottom tab bar height adjustment — mobile only */
+@media (max-width: 768px) {
+  .main-content {
+    height: calc(100vh - 60px - 54px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  }
+}
+
+

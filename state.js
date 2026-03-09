@@ -149,12 +149,16 @@ function _defaultState() {
       log:             [],
       logbook:         [],
       progressPics:    [],
+      routines:        [],
+      activeRoutineId: null,
       /* log entry shape:
          { date, dayName, phase, completedExercises: ['Ex Name',...], notes }
          logbook entry shape:
          { date, dayName, phase, exercises: [{name, sets:[{reps,weight,duration,notes}]}] }
          progressPics entry shape:
-         { date, dataUrl, note } */
+         { date, dataUrl, note }
+         routine shape:
+         { id, name, description, createdAt } */
     },
 
     /* ── Nutrition ── */
@@ -174,6 +178,30 @@ function _defaultState() {
         maintain: [[], [], [], []],
         cut:      [[], [], [], []],
       },
+      /* Macro calculator inputs (set from Settings page) */
+      calcWeight:   175,
+      calcGoal:     'maintain',
+      calcActivity: 14,
+    },
+
+    /* ── Passions ──
+       hierarchy: passions[] each with notes, goals[], journal[]
+       Music passion is pre-seeded and maps to the rich APP_DATA.creative data.
+    */
+    passions: {
+      activePassionId: 'music',
+      passions: [
+        {
+          id:            'music',
+          name:          'Music',
+          icon:          '🎸',
+          blueprintType: 'music',
+          description:   'Guitar · Songwriting · Performance',
+          notes:         '',
+          goals:         [],
+          journal:       [],
+        },
+      ],
     },
   };
 }
@@ -212,6 +240,12 @@ window.STATE = {
       const wk = this.data.workout;
       if (!Array.isArray(wk.logbook))      wk.logbook      = [];
       if (!Array.isArray(wk.progressPics)) wk.progressPics = [];
+      if (!Array.isArray(wk.routines))     wk.routines     = [];
+      if (wk.activeRoutineId === undefined) wk.activeRoutineId = null;
+      const nt = this.data.nutrition;
+      if (nt.calcWeight   === undefined) nt.calcWeight   = 175;
+      if (nt.calcGoal     === undefined) nt.calcGoal     = 'maintain';
+      if (nt.calcActivity === undefined) nt.calcActivity = 14;
       if (wk.cycleCount  === undefined)    wk.cycleCount   = 0;
       if (wk.weekNumber  === undefined)    wk.weekNumber   = 1;
       /* Migrate old Pull-first schedule to the new Upper-first schedule */
@@ -219,6 +253,13 @@ window.STATE = {
         wk.schedule        = ['Upper', 'Lower', 'Rest', 'Pull', 'Push', 'Legs', 'Rest'];
         wk.currentDayIndex = 0;
       }
+      /* Migrate: add passions if not present */
+      if (!this.data.passions) this.data.passions = _defaultState().passions;
+      /* Migrate: stamp blueprintType on existing passions that predate this field */
+      (this.data.passions.passions || []).forEach(p => {
+        if (!p.blueprintType) p.blueprintType = p.id === 'music' ? 'music' : 'general';
+        if (!p.blueprints) p.blueprints = [];
+      });
       console.log('[STATE] Loaded from', saved ? 'IndexedDB' : 'defaults');
     } catch (err) {
       console.warn('[STATE] IDB unavailable, using defaults:', err);
@@ -288,12 +329,112 @@ window.STATE = {
     this.save();
   },
 
+  /* ── Passions mutators ── */
+
+  addPassion(name, icon, description, blueprintType) {
+    const id = 'pas_' + Date.now();
+    this.data.passions.passions.push({
+      id, name, icon: icon || '✨', description: description || '',
+      blueprintType: blueprintType || 'general',
+      notes: '', goals: [], journal: [],
+    });
+    this.data.passions.activePassionId = id;
+    this.save();
+    return id;
+  },
+
+  updatePassion(passionId, fields) {
+    const p = this.data.passions.passions.find(p => p.id === passionId);
+    if (p) Object.assign(p, fields);
+    this.save();
+  },
+
+  addPassionGoal(passionId, label, target, unit) {
+    const p = this.data.passions.passions.find(p => p.id === passionId);
+    if (!p) return;
+    if (!p.goals) p.goals = [];
+    const id = 'g_' + Date.now();
+    p.goals.push({ id, label, current: 0, target: parseFloat(target) || 0, unit: unit || '' });
+    this.save();
+    return id;
+  },
+
+  updatePassionGoal(passionId, goalId, current) {
+    const p = this.data.passions.passions.find(p => p.id === passionId);
+    if (!p) return;
+    const g = (p.goals || []).find(g => g.id === goalId);
+    if (g) { g.current = parseFloat(current) || 0; this.save(); }
+  },
+
+  removePassionGoal(passionId, goalId) {
+    const p = this.data.passions.passions.find(p => p.id === passionId);
+    if (!p) return;
+    p.goals = (p.goals || []).filter(g => g.id !== goalId);
+    this.save();
+  },
+
+  addPassionJournalEntry(passionId, text) {
+    const p = this.data.passions.passions.find(p => p.id === passionId);
+    if (!p) return;
+    if (!p.journal) p.journal = [];
+    p.journal.unshift({ id: 'j_' + Date.now(), date: new Date().toISOString(), text });
+    this.save();
+  },
+
+  removePassionJournalEntry(passionId, entryId) {
+    const p = this.data.passions.passions.find(p => p.id === passionId);
+    if (!p) return;
+    p.journal = (p.journal || []).filter(e => e.id !== entryId);
+    this.save();
+  },
+
+  /* ── Passion blueprint mutators ── */
+
+  _getPassionById(passionId) {
+    return (this.data.passions?.passions || []).find(p => p.id === passionId);
+  },
+
+  addPassionBlueprint(passionId, templateId) {
+    const p = this._getPassionById(passionId);
+    if (!p) return null;
+    if (!p.blueprints) p.blueprints = [];
+    const tpl = (APP_DATA.passionBlueprintTemplates || []).find(t => t.id === templateId);
+    if (!tpl) return null;
+    const id = 'pbp_' + Date.now();
+    p.blueprints.push({
+      id,
+      templateId,
+      name: tpl.name,
+      steps: tpl.steps.map((s, i) => ({ idx: i, completed: false, completedAt: null, notes: '' })),
+    });
+    this.save();
+    return id;
+  },
+
+  completePassionStep(passionId, blueprintId, stepIdx, done) {
+    const p = this._getPassionById(passionId);
+    const bp = (p?.blueprints || []).find(b => b.id === blueprintId);
+    if (!bp) return;
+    bp.steps[stepIdx].completed   = done;
+    bp.steps[stepIdx].completedAt = done ? new Date().toISOString() : null;
+    this.save();
+  },
+
+  setPassionStepNotes(passionId, blueprintId, stepIdx, notes) {
+    const p = this._getPassionById(passionId);
+    const bp = (p?.blueprints || []).find(b => b.id === blueprintId);
+    if (!bp) return;
+    bp.steps[stepIdx].notes = notes;
+    this.save();
+  },
+
   /* ── Business mutators ── */
 
-  addVenture(name, icon, description) {
+  addVenture(name, icon, description, boardType) {
     const id = 'v_' + Date.now();
     this.data.business.ventures.push({
       id, name, icon: icon || '🚀', description: description || '',
+      boardType: boardType || 'saas',
       mrr: 0, users: 0, hormozi_stage: 0, notes: '', blueprints: [],
     });
     this.data.business.activeVentureId = id;
@@ -425,10 +566,44 @@ window.STATE = {
     this.save();
   },
 
+  /* ── Routine mutators ── */
+
+  addRoutine(name, description) {
+    const id = 'r_' + Date.now();
+    const wk = this.data.workout;
+    if (!Array.isArray(wk.routines)) wk.routines = [];
+    wk.routines.push({ id, name, description: description || '', createdAt: new Date().toISOString() });
+    if (!wk.activeRoutineId) wk.activeRoutineId = id;
+    this.save();
+    return id;
+  },
+
+  setActiveRoutine(id) {
+    this.data.workout.activeRoutineId = id;
+    this.save();
+  },
+
+  removeRoutine(id) {
+    const wk = this.data.workout;
+    wk.routines = (wk.routines || []).filter(r => r.id !== id);
+    if (wk.activeRoutineId === id) {
+      wk.activeRoutineId = wk.routines[0]?.id || null;
+    }
+    this.save();
+  },
+
   /* ── Nutrition mutators ── */
 
   setNutritionPhase(phase) {
     this.data.nutrition.currentPhase = phase;
+    this.save();
+  },
+
+  setCalcInputs(weight, goal, activity) {
+    const nt = this.data.nutrition;
+    nt.calcWeight   = weight;
+    nt.calcGoal     = goal;
+    nt.calcActivity = activity;
     this.save();
   },
 
