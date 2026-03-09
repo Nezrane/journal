@@ -165,20 +165,12 @@ window.registerPage('workout', function initWorkout() {
       <!-- Stage progress card -->
       <div class="card" style="margin-bottom:16px">
         <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-          <div>
-            <div class="card-title">${activeStage.label} <span style="font-weight:400;color:var(--muted)">· ${activeStage.weekLabel}</span></div>
-          </div>
-          <span class="badge ${activeStage.phase === 'recovery' ? 'badge-accent' : 'badge-warn'}">${activeStage.phase === 'recovery' ? 'Recovery Phase' : 'Ramping Phase'}</span>
+          <div class="card-title">Progress <span style="font-weight:400;color:var(--muted)">·</span> <span style="${activeStage.phase === 'recovery' ? 'color:var(--accent)' : 'color:var(--accent3)'}">${activeStage.phase === 'recovery' ? 'Recovery Phase' : 'Ramping Phase'}</span></div>
         </div>
         <div class="card-body" style="padding:10px 16px 14px">
           <!-- Segmented stage bar -->
           <div style="display:flex;gap:2px" id="stageBar">
             ${STAGES.map((s, i) => stageSegHTML(s, i)).join('')}
-          </div>
-          <!-- Phase group labels -->
-          <div style="display:flex;margin-top:4px">
-            <div style="flex:5;font-size:9px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent)">Recovery</div>
-            <div style="flex:7;font-size:9px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent3);text-align:right">Ramping</div>
           </div>
           <!-- Day tabs -->
           <div class="day-tabs" style="margin-top:12px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none" id="dayTabs"></div>
