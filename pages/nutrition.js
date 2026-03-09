@@ -174,9 +174,31 @@ window.registerPage('nutrition', function initNutrition() {
 
   /* ── Meal description generator ── */
   function getMealDesc(opt) {
-    if (opt.category === 'Premade') return `Batch-cook friendly — prep once, eat all week. ${opt.cuisine} style.`;
-    if (opt.category === 'Simple')  return `Quick prep, ~15–20 min. ${opt.cuisine} style.`;
-    return `Elevated cooking with fresh ingredients. ${opt.cuisine} cuisine.`;
+    const n = opt.name.toLowerCase();
+    const c = opt.cuisine;
+    const p = opt.protein;
+    const cal = opt.calories;
+
+    if (opt.category === 'Premade') {
+      if (n.includes('batch') || n.includes('frozen') || n.includes('prep'))
+        return `A ${c} meal-prep staple built for consistency. Cook it in bulk on Sunday and you'll have a high-protein, macro-precise option ready to reheat all week — no thinking required on busy days. Great for hitting ${p}g protein without any mid-week cooking.`;
+      return `Designed to be made ahead and portioned into containers. This ${c.toLowerCase()} option delivers ${cal} kcal in a format that travels well and reheats cleanly, making it one of the most efficient ways to stay on plan through a busy schedule.`;
+    }
+
+    if (opt.category === 'Simple') {
+      if (n.includes('bowl') || n.includes('plate'))
+        return `A straightforward ${c.toLowerCase()} bowl that comes together in under 20 minutes with minimal equipment. Built around whole-food sources of protein and complex carbs, it's easy to scale, hard to mess up, and delivers a clean ${cal} kcal with ${p}g of protein per serving.`;
+      if (n.includes('smoothie') || n.includes('yogurt') || n.includes('cottage'))
+        return `A no-cook ${c.toLowerCase()} option that's as fast as it gets. Measure, combine, done — ideal for mornings when time is tight or after a session when you need fast fuel. Packs ${p}g protein into a light, digestible format.`;
+      return `A clean, no-fuss ${c.toLowerCase()} meal ready in 15–20 minutes. Built around familiar ingredients and a simple cook method, it keeps prep stress low while still hitting ${p}g protein and staying well within your ${cal} kcal target for this slot.`;
+    }
+
+    /* Gourmet */
+    if (n.includes('korean') || n.includes('japanese') || n.includes('thai') || n.includes('vietnamese'))
+      return `An elevated ${c.toLowerCase()} dish worth the extra effort. The flavour profile runs deep — aromatic bases, layered seasoning, and contrasting textures make this one of the most satisfying meals in the rotation. At ${cal} kcal and ${p}g protein, it delivers on every level: flavour, macros, and satisfaction.`;
+    if (n.includes('italian') || n.includes('mediterranean') || n.includes('greek') || n.includes('spanish'))
+      return `A refined ${c.toLowerCase()} dish that rewards patience and fresh ingredients. Built on classic technique, it's rich in flavour without being heavy — balanced macros of ${p}g protein and ${cal} kcal make it a gourmet option that still serves your performance goals.`;
+    return `A chef-level ${c.toLowerCase()} preparation that elevates the ordinary into something memorable. Takes more active time to prepare but the result — ${cal} kcal, ${p}g protein, genuine flavour — is worth every minute. Best reserved for days when cooking is part of the ritual.`;
   }
 
   /* ── Ingredient list generator (derived from macro targets + name) ── */

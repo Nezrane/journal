@@ -2270,7 +2270,7 @@ select.form-input option { background: #141920; color: var(--text); }
   margin-top: 6px;
 }
 
-/* ── Meal vertical stack (full-width) ── */
+/* ── Meal options: vertical stack on desktop, horizontal scroll on mobile ── */
 .meal-options-scroll {
   display: flex;
   flex-direction: column;
@@ -2278,11 +2278,34 @@ select.form-input option { background: #141920; color: var(--text); }
   padding: 10px;
 }
 
+/* Mobile: horizontal card scroll strip */
+@media (max-width: 768px) {
+  .meal-options-scroll {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    gap: 10px;
+    padding: 10px 12px 14px;
+    scrollbar-width: none;
+  }
+  .meal-options-scroll::-webkit-scrollbar { display: none; }
+
+  .meal-options-scroll .meal-option {
+    flex-shrink: 0;
+    width: 260px;
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
 .meal-option-desc {
   font-size: 11px;
   color: var(--muted);
-  line-height: 1.45;
-  margin: 2px 0 6px;
+  line-height: 1.5;
+  margin: 4px 0 8px;
 }
 
 .meal-expand-section {
