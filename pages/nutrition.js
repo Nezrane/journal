@@ -66,6 +66,17 @@ window.registerPage('nutrition', function initNutrition() {
     <!-- ── Meal Plan tab ── -->
     <div id="nt-section-plan">
 
+      <!-- Meal slots -->
+      <div>
+        <div class="meals-section-title">Select one per meal slot — tap a meal to select, tap again to expand details</div>
+        <div class="meals-grid" id="mealsGrid"></div>
+      </div>
+
+    </div>
+
+    <!-- ── Customize tab ── -->
+    <div id="nt-section-customize" style="display:none">
+
       <!-- Macro summary + controls -->
       <div class="card" id="macroSummaryCard">
         <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
@@ -89,17 +100,6 @@ window.registerPage('nutrition', function initNutrition() {
           </div>
         </div>
       </div>
-
-      <!-- Meal slots -->
-      <div>
-        <div class="meals-section-title">Select one per meal slot — tap a meal to select, tap again to expand details</div>
-        <div class="meals-grid" id="mealsGrid"></div>
-      </div>
-
-    </div>
-
-    <!-- ── Customize tab ── -->
-    <div id="nt-section-customize" style="display:none">
 
       <!-- Whole Foods reference -->
       <div class="section-label">Whole Foods Reference</div>
