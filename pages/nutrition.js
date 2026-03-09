@@ -51,55 +51,80 @@ window.registerPage('nutrition', function initNutrition() {
 
   const expandedMeals = {}; /* tracks which meal-option is expanded: key = "mi-oi" */
 
+  let activeTab = 'plan';
+
+  const NUTRITION_TABS = [
+    { id: 'plan',      label: 'Meal Plan' },
+    { id: 'customize', label: 'Customize' },
+  ];
+
   /* ── Page shell ── */
   const inner = document.getElementById('nutrition-inner');
   inner.innerHTML = `
     ${buildPageHeader('Daily Planner', 'Nutrition', 'Dashboard')}
 
-    <!-- ── Macro summary + controls combined ── -->
-    <div class="card" id="macroSummaryCard">
-      <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-        <div class="card-title" style="flex-shrink:0">Daily Macro Summary</div>
-        <div class="phase-toggle" id="phaseToggle" style="margin:0">
-          <button class="phase-btn${currentPhase === 'bulk'     ? ' active' : ''}" data-phase="bulk">Bulk</button>
-          <button class="phase-btn${currentPhase === 'maintain' ? ' active' : ''}" data-phase="maintain">Maintain</button>
-          <button class="phase-btn${currentPhase === 'cut'      ? ' active' : ''}" data-phase="cut">Cut</button>
+    <!-- ── Meal Plan tab ── -->
+    <div id="nt-section-plan">
+
+      <!-- Macro summary + controls -->
+      <div class="card" id="macroSummaryCard">
+        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+          <div class="card-title" style="flex-shrink:0">Daily Macro Summary</div>
+          <div class="phase-toggle" id="phaseToggle" style="margin:0">
+            <button class="phase-btn${currentPhase === 'bulk'     ? ' active' : ''}" data-phase="bulk">Bulk</button>
+            <button class="phase-btn${currentPhase === 'maintain' ? ' active' : ''}" data-phase="maintain">Maintain</button>
+            <button class="phase-btn${currentPhase === 'cut'      ? ' active' : ''}" data-phase="cut">Cut</button>
+          </div>
+          <div class="match-badge" id="matchBadge" style="flex-shrink:0">
+            <div class="checkmark"><svg viewBox="0 0 8 8" fill="none"><polyline points="1,4 3,6 7,2" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+            On target ✓
+          </div>
         </div>
-        <div class="match-badge" id="matchBadge" style="flex-shrink:0">
-          <div class="checkmark"><svg viewBox="0 0 8 8" fill="none"><polyline points="1,4 3,6 7,2" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></div>
-          On target ✓
+        <div class="card-body" style="padding:12px 16px">
+          <div class="macro-summary-grid" id="macroSummaryGrid"></div>
+          <div class="legend" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--simple)"></div>Simple</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--premade)"></div>Premade</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--gourmet)"></div>Gourmet</div>
+          </div>
         </div>
       </div>
-      <div class="card-body" style="padding:12px 16px">
-        <div class="macro-summary-grid" id="macroSummaryGrid"></div>
-        <div class="legend" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
-          <div class="legend-item"><div class="legend-dot" style="background:var(--simple)"></div>Simple</div>
-          <div class="legend-item"><div class="legend-dot" style="background:var(--premade)"></div>Premade</div>
-          <div class="legend-item"><div class="legend-dot" style="background:var(--gourmet)"></div>Gourmet</div>
+
+      <!-- Meal slots -->
+      <div>
+        <div class="meals-section-title">Select one per meal slot — tap a meal to select, tap again to expand details</div>
+        <div class="meals-grid" id="mealsGrid"></div>
+      </div>
+
+    </div>
+
+    <!-- ── Customize tab ── -->
+    <div id="nt-section-customize" style="display:none">
+
+      <!-- Whole Foods reference -->
+      <div class="section-label">Whole Foods Reference</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Top nutrient-dense options. Build meals around these.</div>
+      <div class="card">
+        <div class="card-body" style="padding:12px 16px">
+          <div class="whole-foods-compact-grid" id="wholeFoodsCompact"></div>
         </div>
       </div>
+
+      <!-- Nutrition Principles -->
+      <div class="section-label" style="margin-top:8px">Nutrition Principles</div>
+      <div class="grid-2" id="nutritionPrinciples"></div>
+
     </div>
-
-    <!-- ── Meal slots ── -->
-    <div>
-      <div class="meals-section-title">Select one per meal slot — tap a meal to select, tap again to expand details</div>
-      <div class="meals-grid" id="mealsGrid"></div>
-    </div>
-
-    <!-- ── Whole Foods reference — compact multi-column layout ── -->
-    <div class="section-label">Whole Foods Reference</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Top nutrient-dense options. Build meals around these.</div>
-    <div class="card">
-      <div class="card-body" style="padding:12px 16px">
-        <div class="whole-foods-compact-grid" id="wholeFoodsCompact"></div>
-      </div>
-    </div>
-
-    <!-- ── Nutrition Principles ── -->
-    <div class="section-label" style="margin-top:8px">Nutrition Principles</div>
-    <div class="grid-2" id="nutritionPrinciples"></div>
-
   `;
+
+  /* ── Sub-page tabs ── */
+  function showTab(id) {
+    activeTab = id;
+    document.getElementById('nt-section-plan').style.display      = id === 'plan'      ? '' : 'none';
+    document.getElementById('nt-section-customize').style.display = id === 'customize' ? '' : 'none';
+    setPageTabs(inner, NUTRITION_TABS, id, showTab);
+  }
+  setPageTabs(inner, NUTRITION_TABS, activeTab, showTab);
 
   /* ── Phase toggle ── */
   inner.querySelectorAll('#phaseToggle [data-phase]').forEach(btn => {
