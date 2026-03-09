@@ -553,10 +553,11 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
   border-bottom-color: var(--accent);
 }
 
-/* Responsive: swap which version shows */
+/* Responsive: swap which version shows; hide page header (name is in topbar) */
 @media (max-width: 1024px) {
   .page-tabs-desktop { display: none; }
   .page-tabs-mobile  { display: flex; }
+  .page-header       { display: none; }
 }
 
 
@@ -1903,15 +1904,16 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
   /* Main content fills screen, leaves room for bottom tabs */
   .main-content { margin-left: 0; height: calc(100vh - 60px); }
 
-  .page-inner { padding: 46px 14px 30px; }
+  /* Page name is in the topbar — hide full page header on mobile */
+  .page-header  { display: none; }
+  .page-subtitle { display: none; }
+
+  /* Content starts immediately below topbar; tabs are first visible element */
+  .page-inner { padding: 0 14px 30px; }
+  .page-tabs-mobile { margin: 0 -14px 14px; padding: 0 14px; }
 
   /* Hide inline notif button on mobile (use topbar bell instead) */
   .page-notif-btn { display: none !important; }
-
-  /* Consistent header-to-tabs gap across all pages — hide subtitle so
-     pages with/without subtitles align identically */
-  .page-header { border-bottom: none; padding-bottom: 0; }
-  .page-subtitle { display: none; }
 
   .meals-grid    { grid-template-columns: 1fr; }
   .summary-macros { grid-template-columns: repeat(2, 1fr); }
@@ -3253,20 +3255,15 @@ select.form-input option { background: #141920; color: var(--text); }
   transition: transform 0.22s, opacity 0.22s;
 }
 
-.topbar-wordmark { display: flex; align-items: center; gap: 8px; }
+.topbar-wordmark { display: flex; align-items: center; }
 
-.topbar-brand-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
-  background: var(--accent);
-  color: #fff;
+.topbar-page-name {
   font-family: 'Rajdhani', sans-serif;
-  font-size: 15px;
+  font-size: 19px;
   font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text);
 }
 
 .topbar-brand-name {

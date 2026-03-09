@@ -43,12 +43,26 @@ window.registerPage = function(name, fn) {
 ════════════════════════════════════════════════════════════════ */
 const VALID_PAGES = ['dashboard', 'nutrition', 'workout', 'business', 'wealth', 'passions', 'settings'];
 
+const PAGE_NAMES = {
+  dashboard: 'Dashboard',
+  nutrition: 'Nutrition',
+  workout:   'Workout',
+  business:  'Business',
+  wealth:    'Wealth',
+  passions:  'Passions',
+  settings:  'Settings',
+};
+
 /**
  * Navigate to a page.
  * @param {string} page - Page name, must be in VALID_PAGES
  */
 function navigateTo(page) {
   if (!VALID_PAGES.includes(page)) page = 'dashboard';
+
+  /* Update mobile topbar page name */
+  const nameEl = document.getElementById('topbarPageName');
+  if (nameEl) nameEl.textContent = PAGE_NAMES[page] || page;
 
   /* Remove active from all pages + nav items */
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
