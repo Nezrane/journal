@@ -26,7 +26,6 @@
 window.registerPage('nutrition', function initNutrition() {
 
   /* ── Base data (read-only) ── */
-  const BASE_PHASES = APP_DATA.nutrition.phases;
   const BASE_MEALS  = APP_DATA.nutrition.meals;
   const MEAL_TITLES = APP_DATA.nutrition.mealTitles;
   const ns          = STATE.data.nutrition;
@@ -45,7 +44,7 @@ window.registerPage('nutrition', function initNutrition() {
     return BASE_MEALS[phase][slotIdx].length;
   }
 
-  let currentPhase  = ns.currentPhase || 'bulk';
+  let currentPhase  = ns.currentPhase || ns.calcGoal || 'bulk';
   let selectedMeals = ns.selectedMeals[currentPhase]
     ? [...ns.selectedMeals[currentPhase]]
     : [null, null, null, null];
@@ -57,31 +56,27 @@ window.registerPage('nutrition', function initNutrition() {
   inner.innerHTML = `
     ${buildPageHeader('Daily Planner', 'Nutrition', 'Dashboard')}
 
-    <!-- ── Phase + legend bar ── -->
-    <div class="nutrition-controls-bar">
-      <div class="phase-toggle" id="phaseToggle">
-        <button class="phase-btn${currentPhase === 'bulk'     ? ' active' : ''}" data-phase="bulk">Bulk</button>
-        <button class="phase-btn${currentPhase === 'maintain' ? ' active' : ''}" data-phase="maintain">Maintain</button>
-        <button class="phase-btn${currentPhase === 'cut'      ? ' active' : ''}" data-phase="cut">Cut</button>
-      </div>
-      <div class="legend">
-        <div class="legend-item"><div class="legend-dot" style="background:var(--simple)"></div>Simple</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--premade)"></div>Premade</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--gourmet)"></div>Gourmet</div>
-      </div>
-    </div>
-
-    <!-- ── Macro summary ── -->
+    <!-- ── Macro summary + controls combined ── -->
     <div class="card" id="macroSummaryCard">
-      <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
-        <div class="card-title">Daily Macro Summary</div>
-        <div class="match-badge" id="matchBadge">
+      <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <div class="card-title" style="flex-shrink:0">Daily Macro Summary</div>
+        <div class="phase-toggle" id="phaseToggle" style="margin:0">
+          <button class="phase-btn${currentPhase === 'bulk'     ? ' active' : ''}" data-phase="bulk">Bulk</button>
+          <button class="phase-btn${currentPhase === 'maintain' ? ' active' : ''}" data-phase="maintain">Maintain</button>
+          <button class="phase-btn${currentPhase === 'cut'      ? ' active' : ''}" data-phase="cut">Cut</button>
+        </div>
+        <div class="match-badge" id="matchBadge" style="flex-shrink:0">
           <div class="checkmark"><svg viewBox="0 0 8 8" fill="none"><polyline points="1,4 3,6 7,2" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></div>
           On target ✓
         </div>
       </div>
       <div class="card-body" style="padding:12px 16px">
         <div class="macro-summary-grid" id="macroSummaryGrid"></div>
+        <div class="legend" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--simple)"></div>Simple</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--premade)"></div>Premade</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--gourmet)"></div>Gourmet</div>
+        </div>
       </div>
     </div>
 
@@ -113,6 +108,8 @@ window.registerPage('nutrition', function initNutrition() {
       btn.classList.add('active');
       currentPhase = btn.dataset.phase;
       STATE.setNutritionPhase(currentPhase);
+      /* Keep macro calculator goal in sync */
+      STATE.setCalcInputs(ns.calcWeight, currentPhase, ns.calcActivity);
       renderPhase();
     });
   });
@@ -175,11 +172,85 @@ window.registerPage('nutrition', function initNutrition() {
     });
   }
 
+  /* ── Meal description generator ── */
+  function getMealDesc(opt) {
+    if (opt.category === 'Premade') return `Batch-cook friendly — prep once, eat all week. ${opt.cuisine} style.`;
+    if (opt.category === 'Simple')  return `Quick prep, ~15–20 min. ${opt.cuisine} style.`;
+    return `Elevated cooking with fresh ingredients. ${opt.cuisine} cuisine.`;
+  }
+
+  /* ── Ingredient list generator (derived from macro targets + name) ── */
+  function getMealIngredients(opt) {
+    const n = opt.name.toLowerCase();
+    const items = [];
+
+    /* Protein */
+    if      (n.includes('chicken'))                            items.push(['Chicken breast', `${Math.round(opt.protein * 4)}g`]);
+    else if (n.includes('salmon'))                             items.push(['Salmon fillet', `${Math.round(opt.protein * 4.2)}g`]);
+    else if (n.includes('tuna'))                               items.push(['Tuna', `${Math.round(opt.protein * 4.3)}g`]);
+    else if (n.includes('turkey'))                             items.push(['Ground turkey', `${Math.round(opt.protein * 4.5)}g`]);
+    else if (n.includes('beef') || n.includes('steak'))        items.push(['Lean beef', `${Math.round(opt.protein * 4)}g`]);
+    else if (n.includes('pork'))                               items.push(['Pork', `${Math.round(opt.protein * 4)}g`]);
+    else if (n.includes('lamb'))                               items.push(['Lamb', `${Math.round(opt.protein * 4)}g`]);
+    else if (n.includes('shrimp') || n.includes('prawn'))      items.push(['Shrimp', `${Math.round(opt.protein * 4)}g`]);
+    else if (n.includes('cod') || n.includes('sea bass') || n.includes('branzino') || n.includes('swordfish') || n.includes('fish')) items.push(['Fish fillet', `${Math.round(opt.protein * 4.3)}g`]);
+    else if (n.includes('tofu'))                               items.push(['Firm tofu', `${Math.round(opt.protein * 11)}g`]);
+    else if (n.includes('egg'))                                items.push(['Eggs / egg whites', `${Math.ceil(opt.protein / 6)} large`]);
+    else if (n.includes('greek yogurt') || n.includes('yogurt')) items.push(['Greek yogurt', `${Math.round(opt.protein * 10)}g`]);
+    else if (n.includes('cottage cheese'))                     items.push(['Cottage cheese', `${Math.round(opt.protein * 9)}g`]);
+    else                                                       items.push(['Lean protein source', `${opt.protein}g protein`]);
+
+    /* Carbs */
+    if      (n.includes('rice'))                               items.push(['Rice (cooked)', `${Math.round(opt.carbs * 3.5)}g`]);
+    else if (n.includes('pasta') || n.includes('spaghetti') || n.includes('ziti') || n.includes('orzo') || n.includes('fregola')) items.push(['Pasta (cooked)', `${Math.round(opt.carbs * 3.8)}g`]);
+    else if (n.includes('oat'))                                items.push(['Rolled oats', `${Math.round(opt.carbs / 0.67)}g dry`]);
+    else if (n.includes('potato') || n.includes('patata'))     items.push(['Potato', `${Math.round(opt.carbs * 5.5)}g`]);
+    else if (n.includes('quinoa'))                             items.push(['Quinoa (cooked)', `${Math.round(opt.carbs * 5)}g`]);
+    else if (n.includes('lentil'))                             items.push(['Lentils (cooked)', `${Math.round(opt.carbs * 4.5)}g`]);
+    else if (n.includes('bean') || n.includes('chickpea'))     items.push(['Legumes (cooked)', `${Math.round(opt.carbs * 5)}g`]);
+    else if (n.includes('bulgur'))                             items.push(['Bulgur (cooked)', `${Math.round(opt.carbs * 4.5)}g`]);
+    else if (n.includes('couscous'))                           items.push(['Couscous (cooked)', `${Math.round(opt.carbs * 4.5)}g`]);
+    else if (n.includes('pita') || n.includes('bread') || n.includes('toast') || n.includes('wrap') || n.includes('flatbread') || n.includes('crostini') || n.includes('blini')) items.push(['Bread / pita', `${Math.round(opt.carbs * 2.5)}g`]);
+    else if (n.includes('noodle') || n.includes('vermicelli') || n.includes('soba')) items.push(['Noodles (cooked)', `${Math.round(opt.carbs * 3.5)}g`]);
+    else                                                       items.push(['Carb source', `${opt.carbs}g carbs`]);
+
+    /* Veg + fats */
+    items.push(['Mixed vegetables', '150–200g']);
+    if (opt.fats > 15) items.push(['Healthy fats (oil / avocado)', `${Math.round(opt.fats * 0.45)}g`]);
+    items.push(['Seasoning & spices', 'to taste']);
+    return items;
+  }
+
+  /* ── Directions generator (category-based) ── */
+  function getMealDirections(opt) {
+    if (opt.category === 'Premade') return [
+      'Batch-cook proteins and carbs in bulk at the start of the week.',
+      'Portion into meal-prep containers alongside veggies.',
+      'Refrigerate for up to 4 days or freeze for longer storage.',
+      'Reheat in microwave 2–3 min or in a skillet over medium heat.',
+      'Season fresh before eating for best flavour.',
+    ];
+    if (opt.category === 'Simple') return [
+      'Weigh and prep all ingredients before cooking.',
+      'Cook protein using your preferred method (pan-sear, grill, or oven at 200 °C / 400 °F for 20–25 min).',
+      'Cook carb source according to package instructions.',
+      'Steam or sauté vegetables until just tender.',
+      'Combine, season to taste, and serve immediately.',
+    ];
+    /* Gourmet */
+    return [
+      'Gather and weigh all fresh ingredients precisely.',
+      'Marinate or season protein at least 15–30 min before cooking.',
+      'Cook each component separately using the appropriate technique (sear, braise, steam, or roast).',
+      'Build the dish — layer components, adjust seasoning, and plate thoughtfully.',
+      'Rest any meat 5 min before serving for optimal texture.',
+    ];
+  }
+
   /* ══════════════════════════════════════════════════════════════
      RENDER PHASE — rebuilds meal grid + updates summary
   ══════════════════════════════════════════════════════════════ */
   function renderPhase() {
-    const ph = BASE_PHASES[currentPhase];
     selectedMeals = ns.selectedMeals[currentPhase]
       ? [...ns.selectedMeals[currentPhase]]
       : [null, null, null, null];
@@ -220,6 +291,9 @@ window.registerPage('nutrition', function initNutrition() {
         const cCal = (opt.carbs   * 4 / totalCal * 100).toFixed(0);
         const fCal = (opt.fats    * 9 / totalCal * 100).toFixed(0);
 
+        const ingredients = getMealIngredients(opt);
+        const directions  = getMealDirections(opt);
+
         const item = document.createElement('div');
         item.className = 'meal-option' + (isSelected ? ' selected' : '');
         item.innerHTML = `
@@ -230,6 +304,7 @@ window.registerPage('nutrition', function initNutrition() {
               ${isCustom ? `<button class="meal-delete-btn" title="Remove this custom meal">×</button>` : ''}
             </div>
           </div>
+          <div class="meal-option-desc">${getMealDesc(opt)}</div>
           <div class="meal-option-bottom">
             <span class="cuisine-tag">${opt.cuisine}</span>
             <div class="meal-macros">
@@ -240,28 +315,41 @@ window.registerPage('nutrition', function initNutrition() {
             </div>
             <button class="expand-btn" title="Show details" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:2px 6px;transition:transform .2s;transform:${isExpanded ? 'rotate(180deg)' : 'none'}">▾</button>
           </div>
-          <div class="meal-inline-details" style="display:${isExpanded ? 'block' : 'none'};padding:10px 0 4px;border-top:1px solid rgba(255,255,255,0.06);margin-top:8px">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:12px;margin-bottom:10px">
-              <div><span style="color:var(--muted)">Cuisine</span><div style="color:var(--text);font-weight:600">${opt.cuisine}</div></div>
-              <div><span style="color:var(--muted)">Category</span><div style="color:var(--text);font-weight:600">${opt.category}</div></div>
+          <div class="meal-expand-section" style="display:${isExpanded ? 'flex' : 'none'}">
+            <!-- Macros -->
+            <div>
+              <div class="meal-expand-heading">Macro Breakdown</div>
+              <div style="display:flex;flex-direction:column;gap:5px;font-size:11px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="color:#f5a623;min-width:52px">Protein</span>
+                  <div style="flex:1;height:5px;background:rgba(255,255,255,0.08);border-radius:3px"><div style="height:100%;width:${pCal}%;background:#f5a623;border-radius:3px"></div></div>
+                  <span style="color:var(--text)">${opt.protein}g <span style="color:var(--muted)">(${pCal}%)</span></span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="color:#42c4f5;min-width:52px">Carbs</span>
+                  <div style="flex:1;height:5px;background:rgba(255,255,255,0.08);border-radius:3px"><div style="height:100%;width:${cCal}%;background:#42c4f5;border-radius:3px"></div></div>
+                  <span style="color:var(--text)">${opt.carbs}g <span style="color:var(--muted)">(${cCal}%)</span></span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="color:#c97bff;min-width:52px">Fats</span>
+                  <div style="flex:1;height:5px;background:rgba(255,255,255,0.08);border-radius:3px"><div style="height:100%;width:${fCal}%;background:#c97bff;border-radius:3px"></div></div>
+                  <span style="color:var(--text)">${opt.fats}g <span style="color:var(--muted)">(${fCal}%)</span></span>
+                </div>
+              </div>
             </div>
-            <div style="font-family:'Rajdhani',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Macro Breakdown</div>
-            <div style="display:flex;flex-direction:column;gap:5px;font-size:11px">
-              <div style="display:flex;align-items:center;gap:8px">
-                <span style="color:#f5a623;min-width:52px">Protein</span>
-                <div style="flex:1;height:5px;background:rgba(255,255,255,0.08);border-radius:3px"><div style="height:100%;width:${pCal}%;background:#f5a623;border-radius:3px"></div></div>
-                <span style="color:var(--text)">${opt.protein}g <span style="color:var(--muted)">(${pCal}%)</span></span>
-              </div>
-              <div style="display:flex;align-items:center;gap:8px">
-                <span style="color:#42c4f5;min-width:52px">Carbs</span>
-                <div style="flex:1;height:5px;background:rgba(255,255,255,0.08);border-radius:3px"><div style="height:100%;width:${cCal}%;background:#42c4f5;border-radius:3px"></div></div>
-                <span style="color:var(--text)">${opt.carbs}g <span style="color:var(--muted)">(${cCal}%)</span></span>
-              </div>
-              <div style="display:flex;align-items:center;gap:8px">
-                <span style="color:#c97bff;min-width:52px">Fats</span>
-                <div style="flex:1;height:5px;background:rgba(255,255,255,0.08);border-radius:3px"><div style="height:100%;width:${fCal}%;background:#c97bff;border-radius:3px"></div></div>
-                <span style="color:var(--text)">${opt.fats}g <span style="color:var(--muted)">(${fCal}%)</span></span>
-              </div>
+            <!-- Ingredients -->
+            <div>
+              <div class="meal-expand-heading">Ingredients</div>
+              <ul class="meal-ingredient-list">
+                ${ingredients.map(([name, amt]) => `<li><span>${name}</span><span style="color:var(--muted)">${amt}</span></li>`).join('')}
+              </ul>
+            </div>
+            <!-- Directions -->
+            <div>
+              <div class="meal-expand-heading">Directions</div>
+              <ol class="meal-directions-list">
+                ${directions.map(d => `<li>${d}</li>`).join('')}
+              </ol>
             </div>
           </div>`;
 
@@ -275,10 +363,10 @@ window.registerPage('nutrition', function initNutrition() {
         /* Expand/collapse toggle */
         item.querySelector('.expand-btn').addEventListener('click', e => {
           e.stopPropagation();
-          const details = item.querySelector('.meal-inline-details');
+          const details = item.querySelector('.meal-expand-section');
           const btn     = item.querySelector('.expand-btn');
           const open    = details.style.display === 'none';
-          details.style.display = open ? 'block' : 'none';
+          details.style.display = open ? 'flex' : 'none';
           btn.style.transform   = open ? 'rotate(180deg)' : 'none';
           if (open) expandedMeals[expKey] = true;
           else delete expandedMeals[expKey];

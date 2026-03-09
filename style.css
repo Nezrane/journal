@@ -523,7 +523,7 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
   display: none;
   gap: 0;
   border-bottom: 1px solid var(--border);
-  margin: 0 0 18px;
+  margin: 0 0 14px;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -1900,12 +1900,15 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
   /* Main content fills screen, leaves room for bottom tabs */
   .main-content { margin-left: 0; height: calc(100vh - 60px); }
 
-  .page-inner { padding: 18px 14px 30px; }
+  .page-inner { padding: 46px 14px 30px; }
 
   /* Hide inline notif button on mobile (use topbar bell instead) */
   .page-notif-btn { display: none !important; }
 
-  .page-header { border-bottom: none; padding-bottom: 12px; }
+  /* Consistent header-to-tabs gap across all pages — hide subtitle so
+     pages with/without subtitles align identically */
+  .page-header { border-bottom: none; padding-bottom: 0; }
+  .page-subtitle { display: none; }
 
   .meals-grid    { grid-template-columns: 1fr; }
   .summary-macros { grid-template-columns: repeat(2, 1fr); }
@@ -1968,9 +1971,13 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
   }
 }
 
-/* Page scrollable area — avoid content hiding behind notch on landscape */
+/* Page scrollable area — landscape notch on desktop/tablet only.
+   On mobile the topbar margin-top already clears the status bar. */
 .page {
   padding-top: env(safe-area-inset-top, 0px);
+}
+@media (max-width: 1024px) {
+  .page { padding-top: 0; }
 }
 
 /* Sidebar on desktop — top safe area for notch in landscape */
@@ -2260,27 +2267,87 @@ select.form-input option { background: #141920; color: var(--text); }
   margin-top: 6px;
 }
 
-/* ── Meal horizontal scroll (mobile) ── */
+/* ── Meal vertical stack (full-width) ── */
 .meal-options-scroll {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
 }
 
-@media (max-width: 768px) {
-  .meal-options-scroll {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scroll-snap-type: x mandatory;
-    padding-bottom: 8px;
-  }
+.meal-option-desc {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.45;
+  margin: 2px 0 6px;
+}
 
-  .meal-options-scroll > * {
-    flex-shrink: 0;
-    scroll-snap-align: start;
-    min-width: 220px;
-  }
+.meal-expand-section {
+  padding: 12px 0 4px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.meal-expand-heading {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.meal-ingredient-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.meal-ingredient-list li {
+  font-size: 12px;
+  color: var(--text);
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.meal-directions-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  counter-reset: step;
+}
+
+.meal-directions-list li {
+  font-size: 12px;
+  color: rgba(226,234,242,0.78);
+  line-height: 1.5;
+  padding-left: 20px;
+  position: relative;
+  counter-increment: step;
+}
+
+.meal-directions-list li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1.5;
 }
 
 /* ── Workout log history rows ── */
@@ -3113,13 +3180,14 @@ select.form-input option { background: #141920; color: var(--text); }
   display: none;
   position: fixed;
   top: 0; left: 0; right: 0;
-  height: 54px;
+  height: calc(54px + env(safe-area-inset-top, 0px));
   background: var(--bg);
   border-bottom: 1px solid var(--border);
   z-index: 400;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   padding: 0 8px;
+  padding-bottom: 6px;
   padding-top: env(safe-area-inset-top, 0px);
   box-shadow: 0 2px 12px rgba(0,0,0,0.3);
 }
