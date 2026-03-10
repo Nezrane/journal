@@ -449,7 +449,7 @@ window.registerPage('nutrition', function initNutrition() {
 
       const list = card.querySelector(`#nl-${mi}`);
       /* Horizontal drag-scroll track */
-      list.style.cssText = 'display:flex;flex-direction:row;gap:8px;overflow-x:hidden;padding:8px 12px 10px;cursor:grab;user-select:none';
+      list.style.cssText = 'display:flex;flex-direction:row;gap:8px;overflow-x:scroll;padding:8px 12px 10px;cursor:grab;user-select:none;-webkit-overflow-scrolling:touch;scrollbar-width:none';
       (function initDragScroll(el) {
         let startX = 0, startSL = 0, active = false;
         el.addEventListener('mousedown', e => {
