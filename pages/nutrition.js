@@ -44,12 +44,10 @@ window.registerPage('nutrition', function initNutrition() {
     return BASE_MEALS[phase][slotIdx].length;
   }
 
-  let currentPhase  = ns.currentPhase || ns.calcGoal || 'bulk';
+  let currentPhase  = ns.calcGoal || ns.currentPhase || 'maintain';
   let selectedMeals = ns.selectedMeals[currentPhase]
     ? [...ns.selectedMeals[currentPhase]]
     : [null, null, null, null];
-
-  const expandedMeals = {}; /* tracks which meal-option is expanded: key = "mi-oi" */
 
   let activeTab = 'plan';
 
@@ -61,30 +59,19 @@ window.registerPage('nutrition', function initNutrition() {
   /* ── Page shell ── */
   const inner = document.getElementById('nutrition-inner');
   inner.innerHTML = `
-    ${buildPageHeader('Daily Planner', 'Nutrition', 'Dashboard')}
+    ${buildPageHeader('Whole Food Influenced', 'Nutrition', 'Dashboard',
+      'Select one per meal slot — tap a meal to select, tap again to expand details.'
+    )}
 
     <!-- ── Meal Plan tab ── -->
     <div id="nt-section-plan">
 
-      <!-- Meal slots -->
-      <div>
-        <div class="meals-section-title">Select one per meal slot — tap a meal to select, tap again to expand details</div>
-        <div class="meals-grid" id="mealsGrid"></div>
-      </div>
-
-    </div>
-
-    <!-- ── Customize tab ── -->
-    <div id="nt-section-customize" style="display:none">
-
-      <!-- Macro summary + controls -->
-      <div class="card" id="macroSummaryCard">
+      <!-- Phase + macro progress -->
+      <div class="card" id="mealPlanProgress" style="margin-bottom:14px;overflow:hidden">
         <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-          <div class="card-title" style="flex-shrink:0">Daily Macro Summary</div>
-          <div class="phase-toggle" id="phaseToggle" style="margin:0">
-            <button class="phase-btn${currentPhase === 'bulk'     ? ' active' : ''}" data-phase="bulk">Bulk</button>
-            <button class="phase-btn${currentPhase === 'maintain' ? ' active' : ''}" data-phase="maintain">Maintain</button>
-            <button class="phase-btn${currentPhase === 'cut'      ? ' active' : ''}" data-phase="cut">Cut</button>
+          <div>
+            <div class="card-title" style="flex-shrink:0">Daily Macro Summary</div>
+            <div id="planPhaseLabel" style="font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-top:2px"></div>
           </div>
           <div class="match-badge" id="matchBadge" style="flex-shrink:0">
             <div class="checkmark"><svg viewBox="0 0 8 8" fill="none"><polyline points="1,4 3,6 7,2" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></div>
@@ -98,6 +85,72 @@ window.registerPage('nutrition', function initNutrition() {
             <div class="legend-item"><div class="legend-dot" style="background:var(--premade)"></div>Premade</div>
             <div class="legend-item"><div class="legend-dot" style="background:var(--gourmet)"></div>Gourmet</div>
           </div>
+        </div>
+      </div>
+
+      <!-- Meal slots -->
+      <div class="meals-grid" id="mealsGrid"></div>
+
+      <!-- Nutrition Principles -->
+      <div class="section-label" style="margin-top:8px">Nutrition Principles</div>
+      <div class="grid-2" id="nutritionPrinciplesPlan"></div>
+
+    </div>
+
+    <!-- ── Customize tab ── -->
+    <div id="nt-section-customize" style="display:none">
+
+      <!-- Macro Calculator -->
+      <div class="card" style="margin-bottom:16px;overflow:hidden" id="ntMacroCalcCard">
+        <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted)">Macro Calculator</div>
+        </div>
+        <div style="padding:18px 20px">
+
+          <!-- Weight + Height + Body Fat -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px">
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+                <span style="font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Weight</span>
+                <span style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--accent)" id="ntCalcWeightDisplay">175 lbs</span>
+              </div>
+              <input type="range" id="ntCalcWeight" min="100" max="350" value="175" step="1" class="macro-slider" />
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+                <span style="font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Height</span>
+                <span style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--accent)" id="ntCalcHeightDisplay">5'10"</span>
+              </div>
+              <input type="range" id="ntCalcHeight" min="54" max="84" value="70" step="1" class="macro-slider" />
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+                <span style="font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Body Fat %</span>
+                <span style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--accent)" id="ntCurrentBodyFatDisplay">18%</span>
+              </div>
+              <input type="range" id="ntCurrentBodyFat" min="4" max="45" value="18" step="0.5" class="macro-slider" />
+            </div>
+          </div>
+
+          <!-- Active Phase -->
+          <div style="font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Active Phase</div>
+          <div id="ntPhaseSuggestion" style="display:none;font-size:11px;padding:7px 10px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);color:var(--muted);margin-bottom:10px;line-height:1.4"></div>
+          <div class="phase-toggle" id="ntCalcGoalToggle" style="margin-bottom:22px">
+            <button class="phase-btn" data-goal="cut">Cut</button>
+            <button class="phase-btn active" data-goal="maintain">Maintain</button>
+            <button class="phase-btn" data-goal="bulk">Bulk</button>
+          </div>
+
+          <!-- Activity Level -->
+          <div style="font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Activity Level</div>
+          <div class="phase-toggle" id="ntCalcActivityToggle" style="margin-bottom:22px">
+            <button class="phase-btn" data-activity="12">Sedentary</button>
+            <button class="phase-btn active" data-activity="14">Light</button>
+            <button class="phase-btn" data-activity="15.5">Moderate</button>
+            <button class="phase-btn" data-activity="17">Active</button>
+          </div>
+
+          <div class="macro-calc-results" id="ntCalcResults"></div>
         </div>
       </div>
 
@@ -126,19 +179,6 @@ window.registerPage('nutrition', function initNutrition() {
   }
   setPageTabs(inner, NUTRITION_TABS, activeTab, showTab);
 
-  /* ── Phase toggle ── */
-  inner.querySelectorAll('#phaseToggle [data-phase]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      inner.querySelectorAll('#phaseToggle [data-phase]').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentPhase = btn.dataset.phase;
-      STATE.setNutritionPhase(currentPhase);
-      /* Keep macro calculator goal in sync */
-      STATE.setCalcInputs(ns.calcWeight, currentPhase, ns.calcActivity);
-      renderPhase();
-    });
-  });
-
   function catClass(c) {
     return c === 'Simple' ? 'cat-simple' : c === 'Premade' ? 'cat-premade' : 'cat-gourmet';
   }
@@ -146,56 +186,68 @@ window.registerPage('nutrition', function initNutrition() {
   /* ── Inline add-custom-meal panel ── */
   let addingMealSlot = null;
 
-  function openAddMealPanel(slotIdx) {
+  function openAddMealModal(slotIdx) {
     addingMealSlot = slotIdx;
-    /* Close any open add-panels */
-    document.querySelectorAll('.add-meal-panel').forEach(p => p.remove());
-    const card = document.querySelector(`[data-slot-card="${slotIdx}"]`);
-    const panel = document.createElement('div');
-    panel.className = 'add-meal-panel';
-    panel.style.cssText = 'padding:14px 16px;border-top:1px solid var(--border);background:rgba(255,255,255,0.03)';
-    panel.innerHTML = `
-      <div style="font-family:'Rajdhani',sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Add Custom Meal</div>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <input class="form-input" id="cmName"    placeholder="Meal name" />
-        <input class="form-input" id="cmCuisine" placeholder="Cuisine (e.g. American)" />
-        <select class="app-select" id="cmCat">
-          <option value="Simple">Simple</option>
-          <option value="Premade">Premade</option>
-          <option value="Gourmet">Gourmet</option>
-        </select>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <input class="form-input" id="cmCal"  type="number" placeholder="Calories" style="flex:1;min-width:70px" />
-          <input class="form-input" id="cmPro"  type="number" placeholder="Protein g" style="flex:1;min-width:70px" />
-          <input class="form-input" id="cmCarb" type="number" placeholder="Carbs g" style="flex:1;min-width:70px" />
-          <input class="form-input" id="cmFat"  type="number" placeholder="Fat g" style="flex:1;min-width:70px" />
+    const slotName = MEAL_TITLES[slotIdx] || `Slot ${slotIdx + 1}`;
+    document.getElementById('addMealEyebrow').textContent = slotName;
+    document.getElementById('addMealBody').innerHTML = `
+      <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+        <input class="form-input" id="cmName"    placeholder="Meal name (e.g. Chicken Rice Bowl)" />
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <input class="form-input" id="cmCuisine" placeholder="Cuisine (e.g. American)" />
+          <select class="app-select" id="cmCat">
+            <option value="Simple">Simple</option>
+            <option value="Premade">Premade</option>
+            <option value="Gourmet">Gourmet</option>
+          </select>
         </div>
-        <div style="display:flex;gap:8px">
-          <button class="day-tab active" id="saveCm" style="flex:1;padding:9px">Add Meal</button>
-          <button class="day-tab" id="cancelCm" style="padding:9px 14px">Cancel</button>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:4px">Macros</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <input class="form-input" id="cmCal"  type="number" placeholder="Calories (kcal)" />
+          <input class="form-input" id="cmPro"  type="number" placeholder="Protein (g)" />
+          <input class="form-input" id="cmCarb" type="number" placeholder="Carbs (g)" />
+          <input class="form-input" id="cmFat"  type="number" placeholder="Fat (g)" />
         </div>
         <div id="cmError" style="color:var(--danger);font-size:12px;display:none"></div>
+        <button class="day-tab active" id="saveCm" style="width:100%;padding:11px;font-size:13px;margin-top:4px">Save & Select Meal</button>
       </div>`;
-    card.appendChild(panel);
 
-    panel.querySelector('#cancelCm').addEventListener('click', () => panel.remove());
-    panel.querySelector('#saveCm').addEventListener('click', () => {
-      const name  = panel.querySelector('#cmName').value.trim();
-      const cal   = parseInt(panel.querySelector('#cmCal').value)  || 0;
-      const pro   = parseInt(panel.querySelector('#cmPro').value)  || 0;
-      const carb  = parseInt(panel.querySelector('#cmCarb').value) || 0;
-      const fat   = parseInt(panel.querySelector('#cmFat').value)  || 0;
-      const errEl = panel.querySelector('#cmError');
+    const overlay = document.getElementById('addMealOverlay');
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+
+    overlay.querySelector('#saveCm').addEventListener('click', () => {
+      const name  = overlay.querySelector('#cmName').value.trim();
+      const cal   = parseInt(overlay.querySelector('#cmCal').value)  || 0;
+      const pro   = parseInt(overlay.querySelector('#cmPro').value)  || 0;
+      const carb  = parseInt(overlay.querySelector('#cmCarb').value) || 0;
+      const fat   = parseInt(overlay.querySelector('#cmFat').value)  || 0;
+      const errEl = overlay.querySelector('#cmError');
       if (!name || !cal) { errEl.textContent = 'Name and calories are required.'; errEl.style.display = 'block'; return; }
       STATE.addCustomMeal(currentPhase, addingMealSlot, {
         name,
-        category: panel.querySelector('#cmCat').value,
-        cuisine:  panel.querySelector('#cmCuisine').value.trim() || 'Custom',
+        category: overlay.querySelector('#cmCat').value,
+        cuisine:  overlay.querySelector('#cmCuisine').value.trim() || 'Custom',
         calories: cal, protein: pro, carbs: carb, fats: fat,
       });
+      /* Auto-select the new custom meal (it lands at the end of the slot) */
+      const newIdx = getMeals(currentPhase)[addingMealSlot].length - 1;
+      STATE.selectMeal(currentPhase, addingMealSlot, newIdx);
+      closeAddMealModal();
       renderPhase();
     });
   }
+
+  function closeAddMealModal() {
+    const overlay = document.getElementById('addMealOverlay');
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  document.getElementById('addMealClose').addEventListener('click', closeAddMealModal);
+  document.getElementById('addMealOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('addMealOverlay')) closeAddMealModal();
+  });
 
   /* ── Meal description generator ── */
   function getMealDesc(opt) {
@@ -295,6 +347,75 @@ window.registerPage('nutrition', function initNutrition() {
   }
 
   /* ══════════════════════════════════════════════════════════════
+     MEAL DETAIL MODAL
+  ══════════════════════════════════════════════════════════════ */
+  const mealOverlay = document.getElementById('modalOverlay');
+
+  function openMealModal(opt) {
+    const totalCal = opt.calories || 1;
+    const pCal = (opt.protein * 4 / totalCal * 100).toFixed(0);
+    const cCal = (opt.carbs   * 4 / totalCal * 100).toFixed(0);
+    const fCal = (opt.fats    * 9 / totalCal * 100).toFixed(0);
+    const ingredients = getMealIngredients(opt);
+    const directions  = getMealDirections(opt);
+
+    document.getElementById('modalEyebrow').textContent  = opt.cuisine;
+    document.getElementById('modalTitle').textContent    = opt.name;
+    document.getElementById('modalCatBadge').textContent = opt.category;
+    document.getElementById('modalCatBadge').className   = `category-badge ${catClass(opt.category)}`;
+    document.getElementById('modalCuisineTag').textContent = opt.cuisine;
+    document.getElementById('mCalChip').textContent = `${opt.calories} kcal`;
+    document.getElementById('mProChip').textContent = `${opt.protein}g P`;
+    document.getElementById('mCarbChip').textContent = `${opt.carbs}g C`;
+    document.getElementById('mFatChip').textContent  = `${opt.fats}g F`;
+
+    document.getElementById('modalBody').innerHTML = `
+      <div style="padding:16px">
+        <p style="font-size:13px;color:rgba(226,234,242,0.72);line-height:1.6;margin:0 0 16px">${getMealDesc(opt)}</p>
+
+        <div style="font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Macro Breakdown</div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:18px;font-size:12px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="color:#f5a623;min-width:52px">Protein</span>
+            <div style="flex:1;height:5px;background:rgba(255,255,255,0.08);border-radius:3px"><div style="height:100%;width:${pCal}%;background:#f5a623;border-radius:3px"></div></div>
+            <span style="color:var(--fg)">${opt.protein}g <span style="color:var(--muted)">(${pCal}%)</span></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="color:#42c4f5;min-width:52px">Carbs</span>
+            <div style="flex:1;height:5px;background:rgba(255,255,255,0.08);border-radius:3px"><div style="height:100%;width:${cCal}%;background:#42c4f5;border-radius:3px"></div></div>
+            <span style="color:var(--fg)">${opt.carbs}g <span style="color:var(--muted)">(${cCal}%)</span></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="color:#c97bff;min-width:52px">Fats</span>
+            <div style="flex:1;height:5px;background:rgba(255,255,255,0.08);border-radius:3px"><div style="height:100%;width:${fCal}%;background:#c97bff;border-radius:3px"></div></div>
+            <span style="color:var(--fg)">${opt.fats}g <span style="color:var(--muted)">(${fCal}%)</span></span>
+          </div>
+        </div>
+
+        <div style="font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Ingredients</div>
+        <ul class="meal-ingredient-list" style="margin-bottom:18px">
+          ${ingredients.map(([name, amt]) => `<li><span>${name}</span><span style="color:var(--muted)">${amt}</span></li>`).join('')}
+        </ul>
+
+        <div style="font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Directions</div>
+        <ol class="meal-directions-list">
+          ${directions.map(d => `<li>${d}</li>`).join('')}
+        </ol>
+      </div>`;
+
+    mealOverlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeMealModal() {
+    mealOverlay.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  mealOverlay.addEventListener('click', e => { if (e.target === mealOverlay) closeMealModal(); });
+  document.getElementById('modalClose').addEventListener('click', closeMealModal);
+
+  /* ══════════════════════════════════════════════════════════════
      RENDER PHASE — rebuilds meal grid + updates summary
   ══════════════════════════════════════════════════════════════ */
   function renderPhase() {
@@ -302,7 +423,7 @@ window.registerPage('nutrition', function initNutrition() {
       ? [...ns.selectedMeals[currentPhase]]
       : [null, null, null, null];
 
-    /* Update macro summary at top */
+    /* Update macro summary */
     updateSummary();
 
     const allMeals = getMeals(currentPhase);
@@ -310,41 +431,57 @@ window.registerPage('nutrition', function initNutrition() {
     grid.innerHTML = '';
 
     allMeals.forEach((opts, mi) => {
-      const visible  = opts.slice(0, 10);
+      const visible  = opts;
       const baseLen  = baseCount(currentPhase, mi);
       const card     = document.createElement('div');
       card.className = 'meal-card';
       card.dataset.slotCard = mi;
       card.innerHTML = `
-        <div class="meal-card-header">
-          <div class="meal-card-number">Slot ${mi + 1}</div>
-          <div class="meal-card-title">${MEAL_TITLES[mi]}</div>
-          <button class="day-tab add-meal-btn" data-slot="${mi}" style="margin-left:auto;font-size:11px;padding:4px 10px">+ Custom</button>
+        <div class="meal-card-header" style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div class="meal-card-number">Slot ${mi + 1}</div>
+            <div class="meal-card-title">${MEAL_TITLES[mi]}</div>
+          </div>
+          <button class="day-tab add-meal-btn" data-slot="${mi}" style="font-size:11px;padding:4px 12px;white-space:nowrap">+ Custom</button>
         </div>
         <div class="meal-options-scroll" id="nl-${mi}"></div>`;
       grid.appendChild(card);
 
       const list = card.querySelector(`#nl-${mi}`);
+      /* Horizontal drag-scroll track */
+      list.style.cssText = 'display:flex;flex-direction:row;gap:8px;overflow-x:hidden;padding:8px 12px 10px;cursor:grab;user-select:none';
+      (function initDragScroll(el) {
+        let startX = 0, startSL = 0, active = false;
+        el.addEventListener('mousedown', e => {
+          active = true; startX = e.pageX; startSL = el.scrollLeft;
+          el.style.cursor = 'grabbing';
+        });
+        el.addEventListener('mousemove', e => {
+          if (!active) return;
+          el.scrollLeft = startSL - (e.pageX - startX);
+        });
+        ['mouseup', 'mouseleave'].forEach(evt => el.addEventListener(evt, () => {
+          active = false; el.style.cursor = 'grab';
+        }));
+        el.addEventListener('touchstart', e => {
+          startX = e.touches[0].pageX; startSL = el.scrollLeft;
+        }, { passive: true });
+        el.addEventListener('touchmove', e => {
+          el.scrollLeft = startSL - (e.touches[0].pageX - startX);
+        }, { passive: true });
+      }(list));
+
       visible.forEach((opt, oi) => {
         const isCustom   = oi >= baseLen;
         const customIdx  = oi - baseLen;
         const isSelected = selectedMeals[mi] === oi;
-        const expKey     = `${mi}-${oi}`;
-        const isExpanded = !!expandedMeals[expKey];
-
-        /* Macro bar widths for inline detail */
-        const totalCal = opt.calories || 1;
-        const pCal = (opt.protein * 4 / totalCal * 100).toFixed(0);
-        const cCal = (opt.carbs   * 4 / totalCal * 100).toFixed(0);
-        const fCal = (opt.fats    * 9 / totalCal * 100).toFixed(0);
-
-        const ingredients = getMealIngredients(opt);
-        const directions  = getMealDirections(opt);
 
         const item = document.createElement('div');
         item.className = 'meal-option' + (isSelected ? ' selected' : '');
+        const catBgColor = opt.category === 'Simple' ? 'rgba(76,175,158,0.13)' : opt.category === 'Premade' ? 'rgba(124,106,247,0.13)' : 'rgba(240,156,58,0.13)';
+        item.style.cssText = `flex:0 0 280px;min-height:160px;display:flex;flex-direction:column;justify-content:space-between`;
         item.innerHTML = `
-          <div class="meal-option-top">
+          <div class="meal-option-top" style="background:${catBgColor};margin:-14px -14px 8px;padding:10px 14px;border-radius:10px 10px 0 0;min-height:58px;align-items:flex-start">
             <div class="meal-option-name">${opt.name}</div>
             <div style="display:flex;gap:4px;align-items:center">
               <div class="category-badge ${catClass(opt.category)}">${opt.category}</div>
@@ -360,63 +497,16 @@ window.registerPage('nutrition', function initNutrition() {
               <span class="mm mm-c">${opt.carbs}C</span>
               <span class="mm mm-f">${opt.fats}F</span>
             </div>
-            <button class="expand-btn" title="Show details" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:2px 6px;transition:transform .2s;transform:${isExpanded ? 'rotate(180deg)' : 'none'}">▾</button>
-          </div>
-          <div class="meal-expand-section" style="display:${isExpanded ? 'flex' : 'none'}">
-            <!-- Macros -->
-            <div>
-              <div class="meal-expand-heading">Macro Breakdown</div>
-              <div style="display:flex;flex-direction:column;gap:5px;font-size:11px">
-                <div style="display:flex;align-items:center;gap:8px">
-                  <span style="color:#f5a623;min-width:52px">Protein</span>
-                  <div style="flex:1;height:5px;background:rgba(255,255,255,0.08);border-radius:3px"><div style="height:100%;width:${pCal}%;background:#f5a623;border-radius:3px"></div></div>
-                  <span style="color:var(--text)">${opt.protein}g <span style="color:var(--muted)">(${pCal}%)</span></span>
-                </div>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <span style="color:#42c4f5;min-width:52px">Carbs</span>
-                  <div style="flex:1;height:5px;background:rgba(255,255,255,0.08);border-radius:3px"><div style="height:100%;width:${cCal}%;background:#42c4f5;border-radius:3px"></div></div>
-                  <span style="color:var(--text)">${opt.carbs}g <span style="color:var(--muted)">(${cCal}%)</span></span>
-                </div>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <span style="color:#c97bff;min-width:52px">Fats</span>
-                  <div style="flex:1;height:5px;background:rgba(255,255,255,0.08);border-radius:3px"><div style="height:100%;width:${fCal}%;background:#c97bff;border-radius:3px"></div></div>
-                  <span style="color:var(--text)">${opt.fats}g <span style="color:var(--muted)">(${fCal}%)</span></span>
-                </div>
-              </div>
-            </div>
-            <!-- Ingredients -->
-            <div>
-              <div class="meal-expand-heading">Ingredients</div>
-              <ul class="meal-ingredient-list">
-                ${ingredients.map(([name, amt]) => `<li><span>${name}</span><span style="color:var(--muted)">${amt}</span></li>`).join('')}
-              </ul>
-            </div>
-            <!-- Directions -->
-            <div>
-              <div class="meal-expand-heading">Directions</div>
-              <ol class="meal-directions-list">
-                ${directions.map(d => `<li>${d}</li>`).join('')}
-              </ol>
-            </div>
           </div>`;
 
-        /* Tap card body → select/deselect */
+        /* Tap card body → select/deselect (ignore if parent was dragged) */
+        let pointerDownX = 0;
+        item.addEventListener('pointerdown', e => { pointerDownX = e.clientX; });
         item.addEventListener('click', e => {
-          if (e.target.classList.contains('expand-btn') ||
-              e.target.classList.contains('meal-delete-btn')) return;
+          if (Math.abs(e.clientX - pointerDownX) > 6) return; /* dragged, not tapped */
+          if (e.target.classList.contains('meal-delete-btn')) return;
           selectMeal(mi, oi, item);
-        });
-
-        /* Expand/collapse toggle */
-        item.querySelector('.expand-btn').addEventListener('click', e => {
-          e.stopPropagation();
-          const details = item.querySelector('.meal-expand-section');
-          const btn     = item.querySelector('.expand-btn');
-          const open    = details.style.display === 'none';
-          details.style.display = open ? 'flex' : 'none';
-          btn.style.transform   = open ? 'rotate(180deg)' : 'none';
-          if (open) expandedMeals[expKey] = true;
-          else delete expandedMeals[expKey];
+          openMealModal(opt);
         });
 
         /* Delete custom meal */
@@ -435,8 +525,7 @@ window.registerPage('nutrition', function initNutrition() {
 
       /* + Custom button */
       card.querySelector('.add-meal-btn').addEventListener('click', () => {
-        if (opts.length >= 10) { alert('Maximum 10 meal options per slot reached.'); return; }
-        openAddMealPanel(mi);
+        openAddMealModal(mi);
       });
     });
   }
@@ -468,6 +557,14 @@ window.registerPage('nutrition', function initNutrition() {
 
     /* Targets come from the macro calculator (saved in Settings) */
     const targets = computeMacros(ns.calcWeight, ns.calcGoal, ns.calcActivity);
+
+    /* Update plan tab phase label */
+    const phaseLabel = document.getElementById('planPhaseLabel');
+    if (phaseLabel) {
+      const phaseColor = ns.calcGoal === 'bulk' ? 'var(--accent3)' : ns.calcGoal === 'cut' ? 'var(--danger)' : 'var(--accent)';
+      const phaseStr   = (ns.calcGoal || 'maintain').charAt(0).toUpperCase() + (ns.calcGoal || 'maintain').slice(1);
+      phaseLabel.innerHTML = `Active Phase · <span style="color:${phaseColor}">${phaseStr}</span>`;
+    }
 
     const grid = document.getElementById('macroSummaryGrid');
     if (!grid) return;
@@ -515,6 +612,147 @@ window.registerPage('nutrition', function initNutrition() {
   }
 
   /* ══════════════════════════════════════════════════════════════
+     MACRO CALCULATOR (Customize tab)
+  ══════════════════════════════════════════════════════════════ */
+  let ntCalcWeight     = ns.calcWeight     || 175;
+  let ntCalcHeight     = ns.calcHeight     || 70;
+  let ntCalcGoal       = ns.calcGoal       || 'maintain';
+  let ntCalcActivity   = ns.calcActivity   || 14;
+  let ntCurrentBodyFat = ns.currentBodyFat || 18;
+
+  function fmtHeight(inches) {
+    return `${Math.floor(inches / 12)}'${inches % 12}"`;
+  }
+  function calcBMI(weightLbs, heightIn) {
+    return heightIn > 0 ? (weightLbs / (heightIn * heightIn)) * 703 : 0;
+  }
+
+  /* Pre-populate sliders */
+  inner.querySelector('#ntCalcWeight').value = ntCalcWeight;
+  inner.querySelector('#ntCalcWeightDisplay').textContent = ntCalcWeight + ' lbs';
+  inner.querySelector('#ntCalcHeight').value = ntCalcHeight;
+  inner.querySelector('#ntCalcHeightDisplay').textContent = fmtHeight(ntCalcHeight);
+  inner.querySelector('#ntCurrentBodyFat').value = ntCurrentBodyFat;
+  inner.querySelector('#ntCurrentBodyFatDisplay').textContent = ntCurrentBodyFat + '%';
+  inner.querySelectorAll('#ntCalcGoalToggle [data-goal]').forEach(b => {
+    b.classList.toggle('active', b.dataset.goal === ntCalcGoal);
+  });
+  inner.querySelectorAll('#ntCalcActivityToggle [data-activity]').forEach(b => {
+    b.classList.toggle('active', parseFloat(b.dataset.activity) === ntCalcActivity);
+  });
+
+  function renderPhaseSuggestion() {
+    const el  = document.getElementById('ntPhaseSuggestion');
+    if (!el) return;
+    const bmi = calcBMI(ntCalcWeight, ntCalcHeight);
+    const bf  = ntCurrentBodyFat;
+    let phase = null, reason = '';
+
+    if (bmi >= 25 && bf <= 15) {
+      /* Upper BMI but lean — likely muscular, don't cut */
+      phase  = 'maintain';
+      reason = `BMI ${bmi.toFixed(1)} but ${bf}% body fat — you're likely muscular. Maintain to preserve mass.`;
+    } else if (bf >= 20 || bmi >= 27) {
+      phase  = 'cut';
+      reason = bmi >= 27
+        ? `BMI ${bmi.toFixed(1)} and ${bf}% body fat — a cut phase will help reduce excess fat.`
+        : `${bf}% body fat — a cut is recommended to get back into a leaner range.`;
+    } else if (bmi < 18.5 || bf <= 10) {
+      phase  = 'bulk';
+      reason = bmi < 18.5
+        ? `BMI ${bmi.toFixed(1)} — you're underweight. A bulk phase will help you build size and strength.`
+        : `${bf}% body fat — you're very lean and in a great position to bulk effectively.`;
+    }
+
+    if (!phase) { el.style.display = 'none'; return; }
+    const isCurrent  = ntCalcGoal === phase;
+    const phaseColor = phase === 'cut' ? 'var(--danger)' : phase === 'bulk' ? 'var(--accent3)' : 'var(--accent)';
+    el.style.display = 'block';
+    el.innerHTML = `<span style="color:${phaseColor};font-weight:700">${phase.charAt(0).toUpperCase() + phase.slice(1)} suggested</span>${isCurrent ? ' ✓' : ''} — ${reason}`;
+  }
+
+  function renderNtCalcResults() {
+    const m = computeMacros(ntCalcWeight, ntCalcGoal, ntCalcActivity);
+    const pPct = Math.round((m.protein * 4 / m.calories) * 100);
+    const cPct = Math.round((m.carbs   * 4 / m.calories) * 100);
+    const fPct = Math.round((m.fats    * 9 / m.calories) * 100);
+    inner.querySelector('#ntCalcResults').innerHTML = `
+      <div class="macro-calc-main">
+        <div class="macro-calc-calories">
+          <span class="macro-calc-cal-val">${m.calories.toLocaleString()}</span>
+          <span class="macro-calc-cal-unit">kcal/day</span>
+        </div>
+      </div>
+      <div class="macro-calc-breakdown">
+        <div class="macro-calc-macro" style="--mc:${pPct}%;--col:#f5a623">
+          <div class="macro-calc-bar"><div class="macro-calc-bar-fill"></div></div>
+          <div class="macro-calc-val">${m.protein}g</div>
+          <div class="macro-calc-lbl">Protein (${pPct}%)</div>
+        </div>
+        <div class="macro-calc-macro" style="--mc:${cPct}%;--col:#42c4f5">
+          <div class="macro-calc-bar"><div class="macro-calc-bar-fill"></div></div>
+          <div class="macro-calc-val">${m.carbs}g</div>
+          <div class="macro-calc-lbl">Carbs (${cPct}%)</div>
+        </div>
+        <div class="macro-calc-macro" style="--mc:${fPct}%;--col:#c97bff">
+          <div class="macro-calc-bar"><div class="macro-calc-bar-fill"></div></div>
+          <div class="macro-calc-val">${m.fats}g</div>
+          <div class="macro-calc-lbl">Fats (${fPct}%)</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:12px;line-height:1.5">
+        TDEE ≈ ${m.tdee.toLocaleString()} kcal · ${ntCalcGoal === 'bulk' ? '+300 surplus' : ntCalcGoal === 'cut' ? '−500 deficit' : 'maintenance'}
+        · BMI ${calcBMI(ntCalcWeight, ntCalcHeight).toFixed(1)}
+      </div>`;
+  }
+
+  function ntSaveAndRender() {
+    currentPhase = ntCalcGoal;
+    STATE.setNutritionPhase(currentPhase);
+    STATE.setCalcInputs(ntCalcWeight, ntCalcGoal, ntCalcActivity,
+      undefined, undefined, ntCurrentBodyFat, undefined, ntCalcHeight);
+    renderNtCalcResults();
+    renderPhaseSuggestion();
+    updateSummary();
+    if (document.getElementById('mealsGrid')) renderPhase();
+  }
+
+  inner.querySelector('#ntCalcWeight').addEventListener('input', e => {
+    ntCalcWeight = parseInt(e.target.value);
+    inner.querySelector('#ntCalcWeightDisplay').textContent = ntCalcWeight + ' lbs';
+    ntSaveAndRender();
+  });
+  inner.querySelector('#ntCalcHeight').addEventListener('input', e => {
+    ntCalcHeight = parseInt(e.target.value);
+    inner.querySelector('#ntCalcHeightDisplay').textContent = fmtHeight(ntCalcHeight);
+    ntSaveAndRender();
+  });
+  inner.querySelector('#ntCurrentBodyFat').addEventListener('input', e => {
+    ntCurrentBodyFat = parseFloat(e.target.value);
+    inner.querySelector('#ntCurrentBodyFatDisplay').textContent = ntCurrentBodyFat + '%';
+    ntSaveAndRender();
+  });
+
+  inner.querySelectorAll('#ntCalcGoalToggle [data-goal]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      inner.querySelectorAll('#ntCalcGoalToggle [data-goal]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      ntCalcGoal = btn.dataset.goal;
+      ntSaveAndRender();
+    });
+  });
+  inner.querySelectorAll('#ntCalcActivityToggle [data-activity]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      inner.querySelectorAll('#ntCalcActivityToggle [data-activity]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      ntCalcActivity = parseFloat(btn.dataset.activity);
+      ntSaveAndRender();
+    });
+  });
+  renderNtCalcResults();
+  renderPhaseSuggestion();
+
+  /* ══════════════════════════════════════════════════════════════
      WHOLE FOODS — compact multi-column grid (all categories in one card)
   ══════════════════════════════════════════════════════════════ */
   const wfCompact = document.getElementById('wholeFoodsCompact');
@@ -535,14 +773,13 @@ window.registerPage('nutrition', function initNutrition() {
   });
 
   /* ── Nutrition principles ── */
-  const prEl = document.getElementById('nutritionPrinciples');
-  (APP_DATA.healthPrinciples?.nutrition || []).forEach(p => {
-    prEl.innerHTML += `
-      <div style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
-        <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--accent);margin-bottom:4px">${p.title}</div>
-        <div style="font-size:12px;color:rgba(226,234,242,0.72);line-height:1.6">${p.body}</div>
-      </div>`;
-  });
+  const principleHTML = (APP_DATA.healthPrinciples?.nutrition || []).map(p => `
+    <div style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--accent);margin-bottom:4px">${p.title}</div>
+      <div style="font-size:12px;color:rgba(226,234,242,0.72);line-height:1.6">${p.body}</div>
+    </div>`).join('');
+  document.getElementById('nutritionPrinciples').innerHTML     = principleHTML;
+  document.getElementById('nutritionPrinciplesPlan').innerHTML = principleHTML;
 
   renderPhase();
 });

@@ -772,11 +772,19 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
   border-color: var(--accent);
 }
 
+/* Hide scrollbar on swipeable exercise tracks */
+.ex-swipe-track::-webkit-scrollbar,
+.ex-sub-carousel::-webkit-scrollbar,
+.custom-ex-swipe-track::-webkit-scrollbar { display: none; }
+
 /* Thin scrollbar inside modals */
 .modal-body::-webkit-scrollbar,
-.ex-modal-body::-webkit-scrollbar    { width: 4px; }
+.ex-modal-body::-webkit-scrollbar,
+.lift-table-scroll::-webkit-scrollbar    { width: 4px; }
 .modal-body::-webkit-scrollbar-thumb,
-.ex-modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.ex-modal-body::-webkit-scrollbar-thumb,
+.lift-table-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.lift-table-scroll { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 
 /* Loading state */
 .modal-loading {
@@ -960,8 +968,8 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
 
 /* 4-column meal grid */
 .meals-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 14px;
 }
 
@@ -1014,19 +1022,20 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
 
 .meal-option {
   border: 1.5px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 8px 9px 7px;
+  border-radius: 12px;
+  padding: 14px 14px 12px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.18s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
 }
 
-.meal-option:hover  { border-color: var(--accent2); background: rgba(61,220,110,0.04); }
-.meal-option.selected { border-color: var(--accent); background: rgba(61,220,110,0.09); box-shadow: 0 0 0 1px rgba(61,220,110,0.2); }
+.meal-option:hover  { border-color: var(--accent2); transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.28); }
+.meal-option.selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(61,220,110,0.3), 0 4px 16px rgba(0,0,0,0.28); }
 
-.meal-option-top    { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; margin-bottom: 4px; }
-.meal-option-name   { font-size: 12px; font-weight: 500; line-height: 1.3; flex: 1; }
-.meal-option.selected .meal-option-name { color: var(--accent3); }
-.meal-option-bottom { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.meal-option-top    { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.meal-option-name   { font-size: 14px; font-weight: 600; line-height: 1.35; flex: 1; }
+.meal-option.selected .meal-option-name { color: var(--accent); }
+.meal-option-bottom { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
 
 .category-badge {
   font-family: 'Rajdhani', sans-serif;
@@ -1044,10 +1053,13 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
 .cat-premade { background: rgba(66,196,245,0.1);   color: var(--premade); border: 1px solid rgba(66,196,245,0.25); }
 .cat-gourmet { background: rgba(245,166,35,0.1);   color: var(--gourmet); border: 1px solid rgba(245,166,35,0.25); }
 
-.cuisine-tag { font-size: 10px; color: var(--muted); background: rgba(107,138,170,0.1); border-radius: 4px; padding: 1px 5px; }
-.meal-macros { display: flex; gap: 4px; margin-left: auto; }
-.mm          { font-size: 9.5px; font-family: 'Rajdhani', sans-serif; font-weight: 600; }
-.mm-cal { color: var(--accent3); } .mm-p { color: #f5a623; } .mm-c { color: #42c4f5; } .mm-f { color: #c97bff; }
+.cuisine-tag { font-size: 10px; color: var(--muted); background: rgba(107,138,170,0.12); border-radius: 6px; padding: 2px 7px; }
+.meal-macros { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 2px; }
+.mm          { font-size: 11px; font-family: 'Rajdhani', sans-serif; font-weight: 700; padding: 2px 7px; border-radius: 20px; }
+.mm-cal { color: var(--accent3); background: rgba(124,106,247,0.12); }
+.mm-p   { color: #f5a623; background: rgba(245,166,35,0.12); }
+.mm-c   { color: #42c4f5; background: rgba(66,196,245,0.12); }
+.mm-f   { color: #c97bff; background: rgba(201,123,255,0.12); }
 
 .info-btn {
   display: inline-flex;
@@ -1828,7 +1840,7 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
 /* ── 1200px: compress sidebar ── */
 @media (max-width: 1200px) {
   :root { --sidebar-w: 190px; }
-  .meals-grid { grid-template-columns: repeat(2, 1fr); }
+  /* meals-grid is now flex column — no override needed */
   .grid-4     { grid-template-columns: repeat(2, 1fr); }
 }
 
@@ -1915,7 +1927,7 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
   /* Hide inline notif button on mobile (use topbar bell instead) */
   .page-notif-btn { display: none !important; }
 
-  .meals-grid    { grid-template-columns: 1fr; }
+  /* meals-grid is flex column on all sizes */
   .summary-macros { grid-template-columns: repeat(2, 1fr); }
   .grid-2 { grid-template-columns: 1fr; }
   .grid-3 { grid-template-columns: 1fr 1fr; }
@@ -2275,39 +2287,44 @@ select.form-input option { background: #141920; color: var(--text); }
 /* ── Meal options: vertical stack on desktop, horizontal scroll on mobile ── */
 .meal-options-scroll {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 10px;
+  padding: 10px 12px 14px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
 
-/* Mobile: horizontal card scroll strip */
+.meal-options-scroll .meal-option {
+  flex-shrink: 0;
+  width: 280px;
+  min-height: 160px;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* Mobile: narrower cards, hidden scrollbar */
 @media (max-width: 768px) {
   .meal-options-scroll {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scroll-snap-type: x mandatory;
-    gap: 10px;
     padding: 10px 12px 14px;
     scrollbar-width: none;
   }
   .meal-options-scroll::-webkit-scrollbar { display: none; }
-
-  .meal-options-scroll .meal-option {
-    flex-shrink: 0;
-    width: 260px;
-    scroll-snap-align: start;
-    display: flex;
-    flex-direction: column;
-  }
+  .meal-options-scroll .meal-option { width: 250px; min-height: 150px; }
 }
 
 .meal-option-desc {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
-  line-height: 1.5;
-  margin: 4px 0 8px;
+  line-height: 1.55;
+  margin: 6px 0 4px;
+  flex: 1;
 }
 
 .meal-expand-section {
@@ -3137,42 +3154,56 @@ select.form-input option { background: #141920; color: var(--text); }
 .progress-pic-card {
   flex-shrink: 0;
   width: 200px;
-  background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
   scroll-snap-align: start;
   transition: border-color 0.2s;
+  position: relative;
 }
 
 .progress-pic-card:hover { border-color: rgba(255,107,53,0.3); }
 
 .progress-pic-img {
   width: 100%;
-  height: 220px;
+  height: 240px;
   object-fit: cover;
   display: block;
 }
 
 .progress-pic-meta {
-  padding: 10px 12px;
+  padding: 8px 10px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+}
+
+/* Overlay banner — only on routine progress dropdown */
+.routine-pic .progress-pic-meta {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  padding: 18px 10px 8px;
+  background: linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.55) 50%, transparent 100%);
 }
 
 .progress-pic-date {
   font-family: 'Rajdhani', sans-serif;
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
   color: var(--accent);
 }
 
+.routine-pic .progress-pic-date { color: #fff; }
+
 .progress-pic-note {
-  font-size: 11px;
-  color: var(--muted);
-  line-height: 1.35;
+  font-size: 10px;
+  color: rgba(255,255,255,0.7);
+  line-height: 1.3;
 }
 
 .progress-pic-del {

@@ -147,10 +147,12 @@ function _defaultState() {
       cycleCount:      0,
       weekNumber:      1,
       log:             [],
-      logbook:         [],
-      progressPics:    [],
-      routines:        [],
-      activeRoutineId: null,
+      logbook:            [],
+      progressPics:       [],
+      routines:           [],
+      activeRoutineId:    null,
+      favoriteExercises:  [],
+      bodyGoals: { currentWeight: '', goalWeight: '', currentBF: '', goalBF: '' },
       /* log entry shape:
          { date, dayName, phase, completedExercises: ['Ex Name',...], notes }
          logbook entry shape:
@@ -179,9 +181,14 @@ function _defaultState() {
         cut:      [[], [], [], []],
       },
       /* Macro calculator inputs (set from Settings page) */
-      calcWeight:   175,
-      calcGoal:     'maintain',
-      calcActivity: 14,
+      calcWeight:      175,
+      calcHeight:      70,
+      calcGoal:        'maintain',
+      calcActivity:    14,
+      startWeight:     0,
+      startBodyFat:    0,
+      currentBodyFat:  0,
+      goalBodyFat:     0,
     },
 
     /* ── Passions ──
@@ -240,12 +247,18 @@ window.STATE = {
       const wk = this.data.workout;
       if (!Array.isArray(wk.logbook))      wk.logbook      = [];
       if (!Array.isArray(wk.progressPics)) wk.progressPics = [];
-      if (!Array.isArray(wk.routines))     wk.routines     = [];
+      if (!Array.isArray(wk.routines))           wk.routines           = [];
+      if (!Array.isArray(wk.favoriteExercises)) wk.favoriteExercises  = [];
       if (wk.activeRoutineId === undefined) wk.activeRoutineId = null;
       const nt = this.data.nutrition;
-      if (nt.calcWeight   === undefined) nt.calcWeight   = 175;
-      if (nt.calcGoal     === undefined) nt.calcGoal     = 'maintain';
-      if (nt.calcActivity === undefined) nt.calcActivity = 14;
+      if (nt.calcWeight      === undefined) nt.calcWeight      = 175;
+      if (nt.calcHeight      === undefined) nt.calcHeight      = 70;
+      if (nt.calcGoal        === undefined) nt.calcGoal        = 'maintain';
+      if (nt.calcActivity    === undefined) nt.calcActivity    = 14;
+      if (nt.startWeight     === undefined) nt.startWeight     = 0;
+      if (nt.startBodyFat    === undefined) nt.startBodyFat    = 0;
+      if (nt.currentBodyFat  === undefined) nt.currentBodyFat  = 0;
+      if (nt.goalBodyFat     === undefined) nt.goalBodyFat     = 0;
       if (wk.cycleCount  === undefined)    wk.cycleCount   = 0;
       if (wk.weekNumber  === undefined)    wk.weekNumber   = 1;
       /* Migrate old Pull-first schedule to the new Upper-first schedule */
@@ -484,7 +497,7 @@ window.STATE = {
 
   /* ── Workout mutators ── */
 
-  logWorkout(dayName, phase, completedExercises, notes) {
+  logWorkout(dayName, phase, completedExercises, notes, fromDayIdx, scheduleLen) {
     const s   = this.data.workout;
     const log = s.log;
     log.unshift({
@@ -495,13 +508,16 @@ window.STATE = {
     });
     /* Keep last 90 summary log entries */
     if (log.length > 90) log.length = 90;
-    /* Advance the schedule index */
-    s.currentDayIndex = (s.currentDayIndex + 1) % s.schedule.length;
+    /* If completing a specific day (ahead or behind schedule), jump to it first */
+    if (fromDayIdx !== undefined) s.currentDayIndex = fromDayIdx;
+    /* Advance to the next day */
+    const modLen = scheduleLen || s.schedule.length;
+    s.currentDayIndex = (s.currentDayIndex + 1) % modLen;
     /* When index wraps back to 0, a full cycle is complete.
        This drives weekNumber and cycleCount which gate phase transitions. */
     if (s.currentDayIndex === 0) {
       s.cycleCount = (s.cycleCount || 0) + 1;
-      s.weekNumber = Math.min(12, (s.weekNumber || 1) + 1);
+      s.weekNumber = (s.weekNumber || 1) + 1;
     }
     this.save();
   },
@@ -542,7 +558,63 @@ window.STATE = {
     const s = this.data.workout;
     if (!Array.isArray(s.logbook)) s.logbook = [];
     s.logbook.unshift({ date: new Date().toISOString(), ...entry });
-    if (s.logbook.length > 90) s.logbook.length = 90;
+    if (s.logbook.length > 200) s.logbook.length = 200;
+    this.save();
+  },
+
+  /* Delete all sets for an exercise on a given date. If it was the only
+     exercise in that entry, remove the entire entry. */
+  deleteLogbookExercise(date, exName) {
+    const s = this.data.workout;
+    const idx = (s.logbook || []).findIndex(e => e.date === date);
+    if (idx < 0) return;
+    const entry = s.logbook[idx];
+    entry.exercises = (entry.exercises || []).filter(e => e.name !== exName);
+    if (entry.exercises.length === 0) s.logbook.splice(idx, 1);
+    this.save();
+  },
+
+  /* Update weight/reps for a single set within an exercise session. */
+  updateLogbookSet(date, exName, setIdx, data) {
+    const entry = (this.data.workout.logbook || []).find(e => e.date === date);
+    if (!entry) return;
+    const ex = (entry.exercises || []).find(e => e.name === exName);
+    if (!ex || !ex.sets[setIdx]) return;
+    Object.assign(ex.sets[setIdx], data);
+    this.save();
+  },
+
+  /* Delete a single set. Cascades to remove exercise / entry if now empty. */
+  deleteLogbookSet(date, exName, setIdx) {
+    const s = this.data.workout;
+    const entryIdx = (s.logbook || []).findIndex(e => e.date === date);
+    if (entryIdx < 0) return;
+    const entry = s.logbook[entryIdx];
+    const ex = (entry.exercises || []).find(e => e.name === exName);
+    if (!ex) return;
+    ex.sets.splice(setIdx, 1);
+    if (ex.sets.length === 0) {
+      entry.exercises = entry.exercises.filter(e => e.name !== exName);
+      if (entry.exercises.length === 0) s.logbook.splice(entryIdx, 1);
+    }
+    this.save();
+  },
+
+  /* Toggle an exercise name in the favourites list. */
+  toggleFavoriteExercise(name) {
+    const favs = this.data.workout.favoriteExercises || (this.data.workout.favoriteExercises = []);
+    const idx = favs.indexOf(name);
+    if (idx >= 0) favs.splice(idx, 1); else favs.push(name);
+    this.save();
+  },
+
+  /* Append a blank set to an existing exercise session. */
+  addLogbookSet(date, exName) {
+    const entry = (this.data.workout.logbook || []).find(e => e.date === date);
+    if (!entry) return;
+    const ex = (entry.exercises || []).find(e => e.name === exName);
+    if (!ex) return;
+    ex.sets.push({ reps: '', weight: '', duration: null, notes: '' });
     this.save();
   },
 
@@ -552,6 +624,12 @@ window.STATE = {
    * Note: large images will make the exported JSON file much larger.
    * Persisted to IDB via save().
    */
+  saveBodyGoals(obj) {
+    if (!this.data.workout.bodyGoals) this.data.workout.bodyGoals = {};
+    Object.assign(this.data.workout.bodyGoals, obj);
+    this.save();
+  },
+
   addProgressPic(dataUrl, note) {
     const s = this.data.workout;
     if (!Array.isArray(s.progressPics)) s.progressPics = [];
@@ -566,16 +644,58 @@ window.STATE = {
     this.save();
   },
 
+  reorderProgressPics(fromIdx, toIdx) {
+    const arr = this.data.workout.progressPics;
+    if (!arr || fromIdx === toIdx) return;
+    const [item] = arr.splice(fromIdx, 1);
+    arr.splice(toIdx, 0, item);
+    this.save();
+  },
+
   /* ── Routine mutators ── */
 
-  addRoutine(name, description) {
-    const id = 'r_' + Date.now();
+  addRoutine(name, description, id) {
+    const rid = id || ('r_' + Date.now());
     const wk = this.data.workout;
     if (!Array.isArray(wk.routines)) wk.routines = [];
-    wk.routines.push({ id, name, description: description || '', createdAt: new Date().toISOString() });
-    if (!wk.activeRoutineId) wk.activeRoutineId = id;
+    wk.routines.push({
+      id: rid, name, description: description || '',
+      custom: true,
+      repeatable: true,
+      gradient: 'linear-gradient(135deg,#7c6af7 0%,#4a3ab8 100%)',
+      icon: '📋',
+      createdAt: new Date().toISOString(),
+      /* stages: [{ id, name, weekCount, dayRoutines:[{ id, name, label, sections:{ warmup,main,stretching } }] }] */
+      stages: [],
+    });
+    if (!wk.activeRoutineId) wk.activeRoutineId = rid;
     this.save();
-    return id;
+    return rid;
+  },
+
+  saveRoutineData(id, data) {
+    const r = (this.data.workout.routines || []).find(r => r.id === id);
+    if (!r) return;
+    Object.assign(r, data);
+    this.save();
+  },
+
+  duplicateRoutine(id) {
+    const wk = this.data.workout;
+    const src = (wk.routines || []).find(r => r.id === id);
+    if (!src) return;
+    const newId = 'r_' + Date.now();
+    wk.routines.push(JSON.parse(JSON.stringify({ ...src, id: newId, name: src.name + ' (Copy)', createdAt: new Date().toISOString() })));
+    this.save();
+    return newId;
+  },
+
+  renameRoutine(id, name, description) {
+    const r = (this.data.workout.routines || []).find(r => r.id === id);
+    if (!r) return;
+    if (name !== undefined) r.name = name;
+    if (description !== undefined) r.description = description;
+    this.save();
   },
 
   setActiveRoutine(id) {
@@ -599,11 +719,16 @@ window.STATE = {
     this.save();
   },
 
-  setCalcInputs(weight, goal, activity) {
+  setCalcInputs(weight, goal, activity, startWeight, startBodyFat, currentBodyFat, goalBodyFat, height) {
     const nt = this.data.nutrition;
-    nt.calcWeight   = weight;
-    nt.calcGoal     = goal;
-    nt.calcActivity = activity;
+    nt.calcWeight     = weight;
+    nt.calcGoal       = goal;
+    nt.calcActivity   = activity;
+    if (startWeight    !== undefined) nt.startWeight    = startWeight;
+    if (startBodyFat   !== undefined) nt.startBodyFat   = startBodyFat;
+    if (currentBodyFat !== undefined) nt.currentBodyFat = currentBodyFat;
+    if (goalBodyFat    !== undefined) nt.goalBodyFat    = goalBodyFat;
+    if (height         !== undefined) nt.calcHeight     = height;
     this.save();
   },
 
