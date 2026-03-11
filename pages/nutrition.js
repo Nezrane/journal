@@ -146,62 +146,71 @@ window.registerPage('nutrition', function initNutrition() {
     <!-- ── Customize tab ── -->
     <div id="nt-section-customize" style="display:none">
 
-      <!-- Macro Calculator -->
+      <!-- Unified Nutrition Setup -->
       <div class="card" style="margin-bottom:16px;overflow:hidden" id="ntMacroCalcCard">
-        <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
-          <div style="font-family:'Rajdhani',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted)">Macro Calculator</div>
+        <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted)">Nutrition Setup</div>
+          <div id="ntPhaseSuggestion" style="display:none;font-size:10px;padding:3px 8px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:var(--muted)"></div>
         </div>
-        <div style="padding:18px 20px">
 
-          <!-- Weight + Height + Body Fat -->
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px">
+        <!-- Body Stats row -->
+        <div style="padding:16px 20px 0">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Body Stats</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:20px">
             <div>
-              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
-                <span style="font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Weight</span>
-                <span style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--accent)" id="ntCalcWeightDisplay">175 lbs</span>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+                <span style="font-size:11px;color:var(--muted)">Weight</span>
+                <span style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:var(--text)" id="ntCalcWeightDisplay">175 lbs</span>
               </div>
               <input type="range" id="ntCalcWeight" min="100" max="350" value="175" step="1" class="macro-slider" />
             </div>
             <div>
-              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
-                <span style="font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Height</span>
-                <span style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--accent)" id="ntCalcHeightDisplay">5'10"</span>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+                <span style="font-size:11px;color:var(--muted)">Height</span>
+                <span style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:var(--text)" id="ntCalcHeightDisplay">5'10"</span>
               </div>
               <input type="range" id="ntCalcHeight" min="54" max="84" value="70" step="1" class="macro-slider" />
             </div>
             <div>
-              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
-                <span style="font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Body Fat %</span>
-                <span style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--accent)" id="ntCurrentBodyFatDisplay">18%</span>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+                <span style="font-size:11px;color:var(--muted)">Body Fat</span>
+                <span style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:var(--text)" id="ntCurrentBodyFatDisplay">18%</span>
               </div>
               <input type="range" id="ntCurrentBodyFat" min="4" max="45" value="18" step="0.5" class="macro-slider" />
             </div>
           </div>
+        </div>
 
-          <!-- Active Phase -->
-          <div style="font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Active Phase</div>
-          <div id="ntPhaseSuggestion" style="display:none;font-size:11px;padding:7px 10px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);color:var(--muted);margin-bottom:10px;line-height:1.4"></div>
-          <div class="phase-toggle" id="ntCalcGoalToggle" style="margin-bottom:22px">
-            <button class="phase-btn" data-goal="cut">Cut</button>
-            <button class="phase-btn active" data-goal="maintain">Maintain</button>
-            <button class="phase-btn" data-goal="bulk">Bulk</button>
+        <!-- Phase + Activity -->
+        <div style="padding:0 20px 16px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div>
+            <div style="font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Goal Phase</div>
+            <div class="phase-toggle" id="ntCalcGoalToggle" style="flex-direction:column;gap:4px">
+              <button class="phase-btn" data-goal="cut">Cut</button>
+              <button class="phase-btn active" data-goal="maintain">Maintain</button>
+              <button class="phase-btn" data-goal="bulk">Bulk</button>
+            </div>
           </div>
-
-          <!-- Activity Level -->
-          <div style="font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Activity Level</div>
-          <div class="phase-toggle" id="ntCalcActivityToggle" style="margin-bottom:22px">
-            <button class="phase-btn" data-activity="12">Sedentary</button>
-            <button class="phase-btn active" data-activity="14">Light</button>
-            <button class="phase-btn" data-activity="15.5">Moderate</button>
-            <button class="phase-btn" data-activity="17">Active</button>
+          <div>
+            <div style="font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Activity</div>
+            <div class="phase-toggle" id="ntCalcActivityToggle" style="flex-direction:column;gap:4px">
+              <button class="phase-btn" data-activity="12">Sedentary</button>
+              <button class="phase-btn active" data-activity="14">Light</button>
+              <button class="phase-btn" data-activity="15.5">Moderate</button>
+              <button class="phase-btn" data-activity="17">Active</button>
+            </div>
           </div>
+        </div>
 
+        <!-- Live macro totals -->
+        <div style="border-top:1px solid var(--border);padding:14px 20px 0">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Daily Targets</div>
           <div class="macro-calc-results" id="ntCalcResults"></div>
         </div>
-      </div>
 
-      <!-- Macro Distribution -->
-      <div id="macroDistributionSection" style="margin-bottom:24px"></div>
+        <!-- Meal distribution sliders -->
+        <div style="border-top:1px solid var(--border);padding:14px 20px 16px" id="macroDistributionSection"></div>
+      </div>
 
       <!-- Slot Meal Options -->
       <div id="slotCustomizerSection" style="margin-bottom:24px"></div>
@@ -209,10 +218,6 @@ window.registerPage('nutrition', function initNutrition() {
       <!-- Meal Builder + Food Library -->
       <div id="mealBuilderSection" style="margin-bottom:24px"></div>
       <div id="foodLibrarySection" style="margin-bottom:24px"></div>
-
-      <!-- Nutrition Principles -->
-      <div class="section-label" style="margin-top:8px">Nutrition Principles</div>
-      <div class="grid-2" id="nutritionPrinciples"></div>
 
     </div>
   `;
@@ -381,37 +386,26 @@ window.registerPage('nutrition', function initNutrition() {
     const slotColors = ['#42c4f5','#f5a623','var(--accent)','#c97bff'];
 
     el.innerHTML = `
-      <div class="section-label" style="margin-bottom:4px">Calorie & Macro Distribution</div>
-      <div style="font-size:11.5px;color:var(--muted);margin-bottom:14px">Set how your daily totals split across each meal slot.</div>
-      <div class="card" style="overflow:hidden">
-        <div style="padding:14px 16px 6px">
-          ${MEAL_TITLES.map((title, i) => `
-            <div style="margin-bottom:16px">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-                <div style="display:flex;align-items:center;gap:8px">
-                  <div style="width:8px;height:8px;border-radius:50%;background:${slotColors[i]};flex-shrink:0"></div>
-                  <span style="font-size:13px;font-weight:600">${title}</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <span style="font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;color:${slotColors[i]}" id="distPct${i}">${dist[i]}%</span>
-                  <span style="font-size:10.5px;color:var(--muted)" id="distKcal${i}">${targets[i].calories}kcal</span>
-                </div>
-              </div>
-              <input type="range" min="0" max="60" step="1" value="${dist[i]}"
-                class="macro-slider" data-dist="${i}"
-                style="accent-color:${slotColors[i]}">
-              <div style="display:flex;gap:6px;margin-top:5px">
-                <span class="mm mm-p">${targets[i].protein}g P</span>
-                <span class="mm mm-c">${targets[i].carbs}g C</span>
-                <span class="mm mm-f">${targets[i].fats}g F</span>
-              </div>
-            </div>`).join('')}
-        </div>
-        <div style="padding:10px 16px 14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-          <span style="font-size:11.5px;color:var(--muted)">Total allocated</span>
-          <span id="distTotal" style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:${total === 100 ? 'var(--accent)' : 'var(--danger)'}">${total}%</span>
-        </div>
-      </div>`;
+      <div style="font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+        <span>Meal Distribution</span>
+        <span id="distTotal" style="font-size:11px;font-weight:700;color:${total === 100 ? 'var(--accent)' : 'var(--danger)'}">${total}% allocated</span>
+      </div>
+      ${MEAL_TITLES.map((title, i) => `
+        <div style="margin-bottom:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+            <div style="display:flex;align-items:center;gap:7px">
+              <div style="width:7px;height:7px;border-radius:50%;background:${slotColors[i]};flex-shrink:0"></div>
+              <span style="font-size:12px;font-weight:600">${title}</span>
+            </div>
+            <div style="display:flex;align-items:baseline;gap:6px">
+              <span style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:${slotColors[i]}" id="distPct${i}">${dist[i]}%</span>
+              <span style="font-size:10px;color:var(--muted)" id="distKcal${i}">${targets[i].calories}kcal · ${targets[i].protein}P ${targets[i].carbs}C ${targets[i].fats}F</span>
+            </div>
+          </div>
+          <input type="range" min="0" max="60" step="1" value="${dist[i]}"
+            class="macro-slider" data-dist="${i}"
+            style="accent-color:${slotColors[i]}">
+        </div>`).join('')}`;
 
     el.querySelectorAll('[data-dist]').forEach(slider => {
       slider.addEventListener('input', () => {
@@ -425,18 +419,11 @@ window.registerPage('nutrition', function initNutrition() {
           const pctEl  = el.querySelector(`#distPct${j}`);
           const kcalEl = el.querySelector(`#distKcal${j}`);
           if (pctEl)  pctEl.textContent  = `${dist[j]}%`;
-          if (kcalEl) kcalEl.textContent = `${t[j].calories}kcal`;
-          // update macro chips
-          const chips = el.querySelectorAll(`[data-dist="${j}"]`)[0]?.parentElement?.querySelectorAll('.mm');
-          if (chips && chips.length >= 3) {
-            chips[0].textContent = `${t[j].protein}g P`;
-            chips[1].textContent = `${t[j].carbs}g C`;
-            chips[2].textContent = `${t[j].fats}g F`;
-          }
+          if (kcalEl) kcalEl.textContent = `${t[j].calories}kcal · ${t[j].protein}P ${t[j].carbs}C ${t[j].fats}F`;
         });
         const totalEl = el.querySelector('#distTotal');
         if (totalEl) {
-          totalEl.textContent = `${tot}%`;
+          totalEl.textContent = `${tot}% allocated`;
           totalEl.style.color = tot === 100 ? 'var(--accent)' : 'var(--danger)';
         }
         renderPhase();
@@ -1141,13 +1128,12 @@ window.registerPage('nutrition', function initNutrition() {
   renderNtCalcResults();
   renderPhaseSuggestion();
 
-  /* ── Nutrition principles ── */
+  /* ── Nutrition principles (Plan tab only) ── */
   const principleHTML = (APP_DATA.healthPrinciples?.nutrition || []).map(p => `
     <div style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
       <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--accent);margin-bottom:4px">${p.title}</div>
       <div style="font-size:12px;color:rgba(226,234,242,0.72);line-height:1.6">${p.body}</div>
     </div>`).join('');
-  document.getElementById('nutritionPrinciples').innerHTML     = principleHTML;
   document.getElementById('nutritionPrinciplesPlan').innerHTML = principleHTML;
 
   renderPhase();
