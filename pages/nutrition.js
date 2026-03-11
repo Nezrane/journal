@@ -184,21 +184,21 @@ window.registerPage('nutrition', function initNutrition() {
         <!-- Phase + Activity -->
         <div style="padding:0 20px 16px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
           <div>
-            <div style="font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Goal Phase</div>
-            <div class="phase-toggle" id="ntCalcGoalToggle" style="flex-direction:column;gap:4px">
-              <button class="phase-btn" data-goal="cut">Cut</button>
-              <button class="phase-btn active" data-goal="maintain">Maintain</button>
-              <button class="phase-btn" data-goal="bulk">Bulk</button>
-            </div>
+            <label style="font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:8px">Goal Phase</label>
+            <select id="ntCalcGoalToggle" class="form-input" style="width:100%;margin:0">
+              <option value="cut">Cut</option>
+              <option value="maintain">Maintain</option>
+              <option value="bulk">Bulk</option>
+            </select>
           </div>
           <div>
-            <div style="font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Activity</div>
-            <div class="phase-toggle" id="ntCalcActivityToggle" style="flex-direction:column;gap:4px">
-              <button class="phase-btn" data-activity="12">Sedentary</button>
-              <button class="phase-btn active" data-activity="14">Light</button>
-              <button class="phase-btn" data-activity="15.5">Moderate</button>
-              <button class="phase-btn" data-activity="17">Active</button>
-            </div>
+            <label style="font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:8px">Activity Level</label>
+            <select id="ntCalcActivityToggle" class="form-input" style="width:100%;margin:0">
+              <option value="12">Sedentary</option>
+              <option value="14">Light</option>
+              <option value="15.5">Moderate</option>
+              <option value="17">Active</option>
+            </select>
           </div>
         </div>
 
@@ -1010,12 +1010,8 @@ window.registerPage('nutrition', function initNutrition() {
   inner.querySelector('#ntCalcHeightDisplay').textContent = fmtHeight(ntCalcHeight);
   inner.querySelector('#ntCurrentBodyFat').value = ntCurrentBodyFat;
   inner.querySelector('#ntCurrentBodyFatDisplay').textContent = ntCurrentBodyFat + '%';
-  inner.querySelectorAll('#ntCalcGoalToggle [data-goal]').forEach(b => {
-    b.classList.toggle('active', b.dataset.goal === ntCalcGoal);
-  });
-  inner.querySelectorAll('#ntCalcActivityToggle [data-activity]').forEach(b => {
-    b.classList.toggle('active', parseFloat(b.dataset.activity) === ntCalcActivity);
-  });
+  inner.querySelector('#ntCalcGoalToggle').value = ntCalcGoal;
+  inner.querySelector('#ntCalcActivityToggle').value = String(ntCalcActivity);
 
   function renderPhaseSuggestion() {
     const el  = document.getElementById('ntPhaseSuggestion');
@@ -1109,21 +1105,13 @@ window.registerPage('nutrition', function initNutrition() {
     ntSaveAndRender();
   });
 
-  inner.querySelectorAll('#ntCalcGoalToggle [data-goal]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      inner.querySelectorAll('#ntCalcGoalToggle [data-goal]').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      ntCalcGoal = btn.dataset.goal;
-      ntSaveAndRender();
-    });
+  inner.querySelector('#ntCalcGoalToggle').addEventListener('change', e => {
+    ntCalcGoal = e.target.value;
+    ntSaveAndRender();
   });
-  inner.querySelectorAll('#ntCalcActivityToggle [data-activity]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      inner.querySelectorAll('#ntCalcActivityToggle [data-activity]').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      ntCalcActivity = parseFloat(btn.dataset.activity);
-      ntSaveAndRender();
-    });
+  inner.querySelector('#ntCalcActivityToggle').addEventListener('change', e => {
+    ntCalcActivity = parseFloat(e.target.value);
+    ntSaveAndRender();
   });
   renderNtCalcResults();
   renderPhaseSuggestion();
