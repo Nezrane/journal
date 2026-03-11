@@ -26,23 +26,8 @@
 window.registerPage('nutrition', function initNutrition() {
 
   /* ── Base data (read-only) ── */
-  const BASE_MEALS  = APP_DATA.nutrition.meals;
   const MEAL_TITLES = APP_DATA.nutrition.mealTitles;
   const ns          = STATE.data.nutrition;
-
-  /* Merge base meals + user-added custom meals for the given phase.
-     Base meals are always first; custom meals append at the end.
-     The combined index is used for selectedMeals[phase][slotIdx]. */
-  function getMeals(phase) {
-    const base   = BASE_MEALS[phase];
-    const custom = ns.customMeals[phase] || [[], [], [], []];
-    return base.map((slot, i) => [...slot, ...(custom[i] || [])]);
-  }
-
-  /* Index at which custom meals start for a given phase + slot */
-  function baseCount(phase, slotIdx) {
-    return BASE_MEALS[phase][slotIdx].length;
-  }
 
   /* ── Food Library helpers ── */
   function getAllFoods() {
@@ -63,6 +48,39 @@ window.registerPage('nutrition', function initNutrition() {
     });
   }
 
+  function getUnifiedMealCollection() {
+    const seen = new Set();
+    const all = [];
+
+    // Flatten all APP_DATA base meals across all phases (deduplicate by name)
+    const phases = APP_DATA.nutrition?.meals || {};
+    Object.entries(phases).forEach(([_phase, slots]) => {
+      (slots || []).forEach((slotMeals, _slotIdx) => {
+        (slotMeals || []).forEach(m => {
+          if (seen.has(m.name)) return;
+          seen.add(m.name);
+          all.push({
+            _base: true,
+            id: 'base_' + m.name.replace(/\s+/g, '_').toLowerCase(),
+            name: m.name,
+            category: m.category,
+            cuisine: m.cuisine || '',
+            totalCalories: m.calories,
+            totalProtein:  m.protein,
+            totalCarbs:    m.carbs,
+            totalFats:     m.fats,
+            slots: [],
+          });
+        });
+      });
+    });
+
+    // Append user-built meals
+    (STATE.data.nutrition.userMeals || []).forEach(m => all.push(m));
+
+    return all;
+  }
+
   function computeMealTotals(ingredients) {
     return ingredients.reduce((acc, ing) => {
       acc.calories += ing.calories || 0;
@@ -74,9 +92,6 @@ window.registerPage('nutrition', function initNutrition() {
   }
 
   let currentPhase  = ns.calcGoal || ns.currentPhase || 'maintain';
-  let selectedMeals = ns.selectedMeals[currentPhase]
-    ? [...ns.selectedMeals[currentPhase]]
-    : [null, null, null, null];
 
   let activeTab = 'plan';
   let builderMeal = { name:'', slots:[], ingredients:[] };
@@ -209,72 +224,6 @@ window.registerPage('nutrition', function initNutrition() {
     return c === 'Simple' ? 'cat-simple' : c === 'Premade' ? 'cat-premade' : 'cat-gourmet';
   }
 
-  /* ── Inline add-custom-meal panel ── */
-  let addingMealSlot = null;
-
-  function openAddMealModal(slotIdx) {
-    addingMealSlot = slotIdx;
-    const slotName = MEAL_TITLES[slotIdx] || `Slot ${slotIdx + 1}`;
-    document.getElementById('addMealEyebrow').textContent = slotName;
-    document.getElementById('addMealBody').innerHTML = `
-      <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
-        <input class="form-input" id="cmName"    placeholder="Meal name (e.g. Chicken Rice Bowl)" />
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <input class="form-input" id="cmCuisine" placeholder="Cuisine (e.g. American)" />
-          <select class="app-select" id="cmCat">
-            <option value="Simple">Simple</option>
-            <option value="Premade">Premade</option>
-            <option value="Gourmet">Gourmet</option>
-          </select>
-        </div>
-        <div style="font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:4px">Macros</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <input class="form-input" id="cmCal"  type="number" placeholder="Calories (kcal)" />
-          <input class="form-input" id="cmPro"  type="number" placeholder="Protein (g)" />
-          <input class="form-input" id="cmCarb" type="number" placeholder="Carbs (g)" />
-          <input class="form-input" id="cmFat"  type="number" placeholder="Fat (g)" />
-        </div>
-        <div id="cmError" style="color:var(--danger);font-size:12px;display:none"></div>
-        <button class="day-tab active" id="saveCm" style="width:100%;padding:11px;font-size:13px;margin-top:4px">Save & Select Meal</button>
-      </div>`;
-
-    const overlay = document.getElementById('addMealOverlay');
-    overlay.classList.add('open');
-    document.body.style.overflow = 'hidden';
-
-    overlay.querySelector('#saveCm').addEventListener('click', () => {
-      const name  = overlay.querySelector('#cmName').value.trim();
-      const cal   = parseInt(overlay.querySelector('#cmCal').value)  || 0;
-      const pro   = parseInt(overlay.querySelector('#cmPro').value)  || 0;
-      const carb  = parseInt(overlay.querySelector('#cmCarb').value) || 0;
-      const fat   = parseInt(overlay.querySelector('#cmFat').value)  || 0;
-      const errEl = overlay.querySelector('#cmError');
-      if (!name || !cal) { errEl.textContent = 'Name and calories are required.'; errEl.style.display = 'block'; return; }
-      STATE.addCustomMeal(currentPhase, addingMealSlot, {
-        name,
-        category: overlay.querySelector('#cmCat').value,
-        cuisine:  overlay.querySelector('#cmCuisine').value.trim() || 'Custom',
-        calories: cal, protein: pro, carbs: carb, fats: fat,
-      });
-      /* Auto-select the new custom meal (it lands at the end of the slot) */
-      const newIdx = getMeals(currentPhase)[addingMealSlot].length - 1;
-      STATE.selectMeal(currentPhase, addingMealSlot, newIdx);
-      closeAddMealModal();
-      renderPhase();
-    });
-  }
-
-  function closeAddMealModal() {
-    const overlay = document.getElementById('addMealOverlay');
-    overlay.classList.remove('open');
-    document.body.style.overflow = '';
-  }
-
-  document.getElementById('addMealClose').addEventListener('click', closeAddMealModal);
-  document.getElementById('addMealOverlay').addEventListener('click', e => {
-    if (e.target === document.getElementById('addMealOverlay')) closeAddMealModal();
-  });
-
   /* ── Add Custom Food modal wiring ── */
   const addFoodClose = document.getElementById('addFoodClose');
   if (addFoodClose) addFoodClose.addEventListener('click', closeAddFoodModal);
@@ -302,323 +251,66 @@ window.registerPage('nutrition', function initNutrition() {
     });
   }
 
-  /* ── Meal description generator ── */
-  function getMealDesc(opt) {
-    const n = opt.name.toLowerCase();
-    const c = opt.cuisine;
-    const p = opt.protein;
-    const cal = opt.calories;
-
-    if (opt.category === 'Premade') {
-      if (n.includes('batch') || n.includes('frozen') || n.includes('prep'))
-        return `A ${c} meal-prep staple built for consistency. Cook it in bulk on Sunday and you'll have a high-protein, macro-precise option ready to reheat all week — no thinking required on busy days. Great for hitting ${p}g protein without any mid-week cooking.`;
-      return `Designed to be made ahead and portioned into containers. This ${c.toLowerCase()} option delivers ${cal} kcal in a format that travels well and reheats cleanly, making it one of the most efficient ways to stay on plan through a busy schedule.`;
-    }
-
-    if (opt.category === 'Simple') {
-      if (n.includes('bowl') || n.includes('plate'))
-        return `A straightforward ${c.toLowerCase()} bowl that comes together in under 20 minutes with minimal equipment. Built around whole-food sources of protein and complex carbs, it's easy to scale, hard to mess up, and delivers a clean ${cal} kcal with ${p}g of protein per serving.`;
-      if (n.includes('smoothie') || n.includes('yogurt') || n.includes('cottage'))
-        return `A no-cook ${c.toLowerCase()} option that's as fast as it gets. Measure, combine, done — ideal for mornings when time is tight or after a session when you need fast fuel. Packs ${p}g protein into a light, digestible format.`;
-      return `A clean, no-fuss ${c.toLowerCase()} meal ready in 15–20 minutes. Built around familiar ingredients and a simple cook method, it keeps prep stress low while still hitting ${p}g protein and staying well within your ${cal} kcal target for this slot.`;
-    }
-
-    /* Gourmet */
-    if (n.includes('korean') || n.includes('japanese') || n.includes('thai') || n.includes('vietnamese'))
-      return `An elevated ${c.toLowerCase()} dish worth the extra effort. The flavour profile runs deep — aromatic bases, layered seasoning, and contrasting textures make this one of the most satisfying meals in the rotation. At ${cal} kcal and ${p}g protein, it delivers on every level: flavour, macros, and satisfaction.`;
-    if (n.includes('italian') || n.includes('mediterranean') || n.includes('greek') || n.includes('spanish'))
-      return `A refined ${c.toLowerCase()} dish that rewards patience and fresh ingredients. Built on classic technique, it's rich in flavour without being heavy — balanced macros of ${p}g protein and ${cal} kcal make it a gourmet option that still serves your performance goals.`;
-    return `A chef-level ${c.toLowerCase()} preparation that elevates the ordinary into something memorable. Takes more active time to prepare but the result — ${cal} kcal, ${p}g protein, genuine flavour — is worth every minute. Best reserved for days when cooking is part of the ritual.`;
-  }
-
-  /* ── Ingredient list generator (derived from macro targets + name) ── */
-  function getMealIngredients(opt) {
-    const n = opt.name.toLowerCase();
-    const items = [];
-
-    /* Protein */
-    if      (n.includes('chicken'))                            items.push(['Chicken breast', `${Math.round(opt.protein * 4)}g`]);
-    else if (n.includes('salmon'))                             items.push(['Salmon fillet', `${Math.round(opt.protein * 4.2)}g`]);
-    else if (n.includes('tuna'))                               items.push(['Tuna', `${Math.round(opt.protein * 4.3)}g`]);
-    else if (n.includes('turkey'))                             items.push(['Ground turkey', `${Math.round(opt.protein * 4.5)}g`]);
-    else if (n.includes('beef') || n.includes('steak'))        items.push(['Lean beef', `${Math.round(opt.protein * 4)}g`]);
-    else if (n.includes('pork'))                               items.push(['Pork', `${Math.round(opt.protein * 4)}g`]);
-    else if (n.includes('lamb'))                               items.push(['Lamb', `${Math.round(opt.protein * 4)}g`]);
-    else if (n.includes('shrimp') || n.includes('prawn'))      items.push(['Shrimp', `${Math.round(opt.protein * 4)}g`]);
-    else if (n.includes('cod') || n.includes('sea bass') || n.includes('branzino') || n.includes('swordfish') || n.includes('fish')) items.push(['Fish fillet', `${Math.round(opt.protein * 4.3)}g`]);
-    else if (n.includes('tofu'))                               items.push(['Firm tofu', `${Math.round(opt.protein * 11)}g`]);
-    else if (n.includes('egg'))                                items.push(['Eggs / egg whites', `${Math.ceil(opt.protein / 6)} large`]);
-    else if (n.includes('greek yogurt') || n.includes('yogurt')) items.push(['Greek yogurt', `${Math.round(opt.protein * 10)}g`]);
-    else if (n.includes('cottage cheese'))                     items.push(['Cottage cheese', `${Math.round(opt.protein * 9)}g`]);
-    else                                                       items.push(['Lean protein source', `${opt.protein}g protein`]);
-
-    /* Carbs */
-    if      (n.includes('rice'))                               items.push(['Rice (cooked)', `${Math.round(opt.carbs * 3.5)}g`]);
-    else if (n.includes('pasta') || n.includes('spaghetti') || n.includes('ziti') || n.includes('orzo') || n.includes('fregola')) items.push(['Pasta (cooked)', `${Math.round(opt.carbs * 3.8)}g`]);
-    else if (n.includes('oat'))                                items.push(['Rolled oats', `${Math.round(opt.carbs / 0.67)}g dry`]);
-    else if (n.includes('potato') || n.includes('patata'))     items.push(['Potato', `${Math.round(opt.carbs * 5.5)}g`]);
-    else if (n.includes('quinoa'))                             items.push(['Quinoa (cooked)', `${Math.round(opt.carbs * 5)}g`]);
-    else if (n.includes('lentil'))                             items.push(['Lentils (cooked)', `${Math.round(opt.carbs * 4.5)}g`]);
-    else if (n.includes('bean') || n.includes('chickpea'))     items.push(['Legumes (cooked)', `${Math.round(opt.carbs * 5)}g`]);
-    else if (n.includes('bulgur'))                             items.push(['Bulgur (cooked)', `${Math.round(opt.carbs * 4.5)}g`]);
-    else if (n.includes('couscous'))                           items.push(['Couscous (cooked)', `${Math.round(opt.carbs * 4.5)}g`]);
-    else if (n.includes('pita') || n.includes('bread') || n.includes('toast') || n.includes('wrap') || n.includes('flatbread') || n.includes('crostini') || n.includes('blini')) items.push(['Bread / pita', `${Math.round(opt.carbs * 2.5)}g`]);
-    else if (n.includes('noodle') || n.includes('vermicelli') || n.includes('soba')) items.push(['Noodles (cooked)', `${Math.round(opt.carbs * 3.5)}g`]);
-    else                                                       items.push(['Carb source', `${opt.carbs}g carbs`]);
-
-    /* Veg + fats */
-    items.push(['Mixed vegetables', '150–200g']);
-    if (opt.fats > 15) items.push(['Healthy fats (oil / avocado)', `${Math.round(opt.fats * 0.45)}g`]);
-    items.push(['Seasoning & spices', 'to taste']);
-    return items;
-  }
-
-  /* ── Directions generator (category-based) ── */
-  function getMealDirections(opt) {
-    if (opt.category === 'Premade') return [
-      'Batch-cook proteins and carbs in bulk at the start of the week.',
-      'Portion into meal-prep containers alongside veggies.',
-      'Refrigerate for up to 4 days or freeze for longer storage.',
-      'Reheat in microwave 2–3 min or in a skillet over medium heat.',
-      'Season fresh before eating for best flavour.',
-    ];
-    if (opt.category === 'Simple') return [
-      'Weigh and prep all ingredients before cooking.',
-      'Cook protein using your preferred method (pan-sear, grill, or oven at 200 °C / 400 °F for 20–25 min).',
-      'Cook carb source according to package instructions.',
-      'Steam or sauté vegetables until just tender.',
-      'Combine, season to taste, and serve immediately.',
-    ];
-    /* Gourmet */
-    return [
-      'Gather and weigh all fresh ingredients precisely.',
-      'Marinate or season protein at least 15–30 min before cooking.',
-      'Cook each component separately using the appropriate technique (sear, braise, steam, or roast).',
-      'Build the dish — layer components, adjust seasoning, and plate thoughtfully.',
-      'Rest any meat 5 min before serving for optimal texture.',
-    ];
-  }
-
-  /* ══════════════════════════════════════════════════════════════
-     MEAL DETAIL MODAL
-  ══════════════════════════════════════════════════════════════ */
-  const mealOverlay = document.getElementById('modalOverlay');
-
-  function openMealModal(opt) {
-    const totalCal = opt.calories || 1;
-    const pCal = (opt.protein * 4 / totalCal * 100).toFixed(0);
-    const cCal = (opt.carbs   * 4 / totalCal * 100).toFixed(0);
-    const fCal = (opt.fats    * 9 / totalCal * 100).toFixed(0);
-    const ingredients = getMealIngredients(opt);
-    const directions  = getMealDirections(opt);
-
-    document.getElementById('modalEyebrow').textContent  = opt.cuisine;
-    document.getElementById('modalTitle').textContent    = opt.name;
-    document.getElementById('modalCatBadge').textContent = opt.category;
-    document.getElementById('modalCatBadge').className   = `category-badge ${catClass(opt.category)}`;
-    document.getElementById('modalCuisineTag').textContent = opt.cuisine;
-    document.getElementById('mCalChip').textContent = `${opt.calories} kcal`;
-    document.getElementById('mProChip').textContent = `${opt.protein}g P`;
-    document.getElementById('mCarbChip').textContent = `${opt.carbs}g C`;
-    document.getElementById('mFatChip').textContent  = `${opt.fats}g F`;
-
-    document.getElementById('modalBody').innerHTML = `
-      <div style="padding:16px">
-        <p style="font-size:13px;color:rgba(226,234,242,0.72);line-height:1.6;margin:0 0 16px">${getMealDesc(opt)}</p>
-
-        <div style="font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Macro Breakdown</div>
-        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:18px;font-size:12px">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="color:#f5a623;min-width:52px">Protein</span>
-            <div style="flex:1;height:5px;background:rgba(255,255,255,0.08);border-radius:3px"><div style="height:100%;width:${pCal}%;background:#f5a623;border-radius:3px"></div></div>
-            <span style="color:var(--fg)">${opt.protein}g <span style="color:var(--muted)">(${pCal}%)</span></span>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="color:#42c4f5;min-width:52px">Carbs</span>
-            <div style="flex:1;height:5px;background:rgba(255,255,255,0.08);border-radius:3px"><div style="height:100%;width:${cCal}%;background:#42c4f5;border-radius:3px"></div></div>
-            <span style="color:var(--fg)">${opt.carbs}g <span style="color:var(--muted)">(${cCal}%)</span></span>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="color:#c97bff;min-width:52px">Fats</span>
-            <div style="flex:1;height:5px;background:rgba(255,255,255,0.08);border-radius:3px"><div style="height:100%;width:${fCal}%;background:#c97bff;border-radius:3px"></div></div>
-            <span style="color:var(--fg)">${opt.fats}g <span style="color:var(--muted)">(${fCal}%)</span></span>
-          </div>
-        </div>
-
-        <div style="font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Ingredients</div>
-        <ul class="meal-ingredient-list" style="margin-bottom:18px">
-          ${ingredients.map(([name, amt]) => `<li><span>${name}</span><span style="color:var(--muted)">${amt}</span></li>`).join('')}
-        </ul>
-
-        <div style="font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Directions</div>
-        <ol class="meal-directions-list">
-          ${directions.map(d => `<li>${d}</li>`).join('')}
-        </ol>
-      </div>`;
-
-    mealOverlay.classList.add('open');
-    document.body.style.overflow = 'hidden';
-  }
-
-  function closeMealModal() {
-    mealOverlay.classList.remove('open');
-    document.body.style.overflow = '';
-  }
-
-  mealOverlay.addEventListener('click', e => { if (e.target === mealOverlay) closeMealModal(); });
-  document.getElementById('modalClose').addEventListener('click', closeMealModal);
-
   /* ══════════════════════════════════════════════════════════════
      RENDER PHASE — rebuilds meal grid + updates summary
   ══════════════════════════════════════════════════════════════ */
   function renderPhase() {
-    selectedMeals = ns.selectedMeals[currentPhase]
-      ? [...ns.selectedMeals[currentPhase]]
-      : [null, null, null, null];
-
-    /* Update macro summary */
-    updateSummary();
-
-    const allMeals = getMeals(currentPhase);
-    const grid     = document.getElementById('mealsGrid');
+    const grid = document.getElementById('mealsGrid');
+    if (!grid) return;
     grid.innerHTML = '';
 
-    allMeals.forEach((opts, mi) => {
-      const visible  = opts;
-      const baseLen  = baseCount(currentPhase, mi);
-      const card     = document.createElement('div');
+    const today   = new Date().toISOString().slice(0, 10);
+    const plan    = STATE.data.nutrition.mealPlan[today] || {};
+    const SLOT_KEYS   = ['breakfast', 'lunch', 'dinner', 'snack'];
+    const collection  = getUnifiedMealCollection();
+
+    MEAL_TITLES.forEach((title, mi) => {
+      const slotKey    = SLOT_KEYS[mi];
+      const assignedId = plan[slotKey];
+      const assigned   = assignedId ? collection.find(m => m.id === assignedId) : null;
+
+      const card = document.createElement('div');
       card.className = 'meal-card';
-      card.dataset.slotCard = mi;
       card.innerHTML = `
         <div class="meal-card-header" style="display:flex;align-items:center;justify-content:space-between">
           <div>
             <div class="meal-card-number">Slot ${mi + 1}</div>
-            <div class="meal-card-title">${MEAL_TITLES[mi]}</div>
+            <div class="meal-card-title">${title}</div>
           </div>
-          <button class="day-tab add-meal-btn" data-slot="${mi}" style="font-size:11px;padding:4px 12px;white-space:nowrap">+ Custom</button>
+          ${assigned ? `<button class="day-tab" data-change="${mi}" style="font-size:11px;padding:4px 12px">Change</button>` : ''}
         </div>
-        <div class="meal-options-scroll" id="nl-${mi}"></div>`;
-      grid.appendChild(card);
-
-      const list = card.querySelector(`#nl-${mi}`);
-      /* Horizontal drag-scroll track */
-      list.style.cursor = 'grab';
-      list.style.userSelect = 'none';
-      (function initDragScroll(el) {
-        let startX = 0, startSL = 0, active = false;
-        el.addEventListener('mousedown', e => {
-          active = true; startX = e.pageX; startSL = el.scrollLeft;
-          el.style.cursor = 'grabbing';
-        });
-        el.addEventListener('mousemove', e => {
-          if (!active) return;
-          el.scrollLeft = startSL - (e.pageX - startX);
-        });
-        ['mouseup', 'mouseleave'].forEach(evt => el.addEventListener(evt, () => {
-          active = false; el.style.cursor = 'grab';
-        }));
-        // Touch: let CSS touch-action:pan-x handle it natively — no JS needed
-      }(list));
-
-      visible.forEach((opt, oi) => {
-        const isCustom   = oi >= baseLen;
-        const customIdx  = oi - baseLen;
-        const isSelected = selectedMeals[mi] === oi;
-
-        const item = document.createElement('div');
-        item.className = 'meal-option' + (isSelected ? ' selected' : '');
-        const catBgColor = opt.category === 'Simple' ? 'rgba(76,175,158,0.13)' : opt.category === 'Premade' ? 'rgba(124,106,247,0.13)' : 'rgba(240,156,58,0.13)';
-        item.style.cssText = `flex:0 0 280px;min-height:160px;display:flex;flex-direction:column;justify-content:space-between`;
-        item.innerHTML = `
-          <div class="meal-option-top" style="background:${catBgColor};margin:-14px -14px 8px;padding:10px 14px;border-radius:10px 10px 0 0;min-height:58px;align-items:flex-start">
-            <div class="meal-option-name">${opt.name}</div>
-            <div style="display:flex;gap:4px;align-items:center">
-              <div class="category-badge ${catClass(opt.category)}">${opt.category}</div>
-              ${isCustom ? `<button class="meal-delete-btn" title="Remove this custom meal">×</button>` : ''}
+        ${assigned ? `
+          <div style="padding:10px 12px 12px">
+            <div style="font-size:14px;font-weight:600;margin-bottom:6px">${assigned.name}</div>
+            ${assigned.category ? `<span class="category-badge ${catClass(assigned.category)}" style="margin-bottom:8px;display:inline-block">${assigned.category}</span>` : ''}
+            ${assigned.cuisine ? `<span class="cuisine-tag" style="margin-left:6px">${assigned.cuisine}</span>` : ''}
+            <div class="meal-macros" style="margin-top:8px">
+              <span class="mm mm-cal">${assigned.totalCalories}kcal</span>
+              <span class="mm mm-p">${assigned.totalProtein}P</span>
+              <span class="mm mm-c">${assigned.totalCarbs}C</span>
+              <span class="mm mm-f">${assigned.totalFats}F</span>
             </div>
-          </div>
-          <div class="meal-option-desc">${getMealDesc(opt)}</div>
-          <div class="meal-option-bottom">
-            <span class="cuisine-tag">${opt.cuisine}</span>
-            <div class="meal-macros">
-              <span class="mm mm-cal">${opt.calories}kcal</span>
-              <span class="mm mm-p">${opt.protein}P</span>
-              <span class="mm mm-c">${opt.carbs}C</span>
-              <span class="mm mm-f">${opt.fats}F</span>
-            </div>
-          </div>`;
+            <button data-clear="${mi}" style="margin-top:10px;background:none;border:none;color:var(--danger);font-size:11px;cursor:pointer;padding:0">Remove</button>
+          </div>` : `
+          <div style="padding:10px 12px 14px">
+            <button class="day-tab" data-choose="${mi}" style="width:100%;padding:10px;font-size:13px;color:var(--muted)">+ Choose Meal</button>
+          </div>`}
+      `;
 
-        /* Tap card body → select/deselect (ignore if parent was dragged) */
-        let pointerDownX = 0;
-        item.addEventListener('pointerdown', e => { pointerDownX = e.clientX; });
-        item.addEventListener('click', e => {
-          if (Math.abs(e.clientX - pointerDownX) > 6) return; /* dragged, not tapped */
-          if (e.target.classList.contains('meal-delete-btn')) return;
-          selectMeal(mi, oi, item);
-          openMealModal(opt);
-        });
-
-        /* Delete custom meal */
-        const delBtn = item.querySelector('.meal-delete-btn');
-        if (delBtn) {
-          delBtn.addEventListener('click', e => {
-            e.stopPropagation();
-            if (selectedMeals[mi] === oi) STATE.selectMeal(currentPhase, mi, null);
-            STATE.removeCustomMeal(currentPhase, mi, customIdx);
-            renderPhase();
-          });
-        }
-
-        list.appendChild(item);
+      card.querySelectorAll('[data-choose],[data-change]').forEach(btn => {
+        btn.addEventListener('click', () => openMealCollectionPicker(mi));
       });
-
-      /* + Custom button */
-      card.querySelector('.add-meal-btn').addEventListener('click', () => {
-        openAddMealModal(mi);
-      });
-
-      /* Assign from Library row */
-      const today = new Date().toISOString().slice(0,10);
-      const plan  = STATE.data.nutrition.mealPlan[today] || {};
-      const SLOT_KEYS = ['breakfast','lunch','dinner','snack'];
-      const slotKey   = SLOT_KEYS[mi] || null;
-      const assignedMealId = slotKey ? plan[slotKey] : null;
-      const assignedMeal   = assignedMealId ? (STATE.data.nutrition.userMeals||[]).find(m=>m.id===assignedMealId) : null;
-
-      const assignRow = document.createElement('div');
-      assignRow.style.cssText = 'padding:6px 12px 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap';
-      if (assignedMeal) {
-        assignRow.innerHTML = `
-          <span style="font-size:11.5px;color:var(--muted)">Library:</span>
-          <span style="font-size:12px;font-weight:600;color:var(--accent)">${assignedMeal.name}</span>
-          <span class="mm mm-cal">${assignedMeal.totalCalories}kcal</span>
-          <button class="day-tab" data-clear-slot="${mi}" style="margin-left:auto;padding:2px 9px;font-size:11px">Change</button>`;
-      } else {
-        assignRow.innerHTML = `
-          <button class="day-tab" data-assign-slot="${mi}" style="padding:3px 10px;font-size:11px;color:var(--muted)">+ Assign from Library</button>`;
-      }
-      card.appendChild(assignRow);
-
-      card.querySelectorAll('[data-assign-slot]').forEach(btn => {
-        btn.addEventListener('click', () => openUserMealPicker(parseInt(btn.dataset.assignSlot)));
-      });
-      card.querySelectorAll('[data-clear-slot]').forEach(btn => {
+      card.querySelectorAll('[data-clear]').forEach(btn => {
         btn.addEventListener('click', () => {
-          const sk = (['breakfast','lunch','dinner','snack'])[parseInt(btn.dataset.clearSlot)];
-          STATE.clearMealSlot(today, sk);
+          STATE.clearMealSlot(today, slotKey);
           renderPhase();
+          updateSummary();
         });
       });
-    });
-  }
 
-  function selectMeal(mi, oi, el) {
-    document.querySelectorAll(`#nl-${mi} .meal-option`).forEach(o => o.classList.remove('selected'));
-    /* Toggle: clicking selected meal deselects it */
-    selectedMeals[mi] = selectedMeals[mi] === oi ? null : oi;
-    if (selectedMeals[mi] !== null) el.classList.add('selected');
-    /* STATE.selectMeal writes to nutrition.selectedMeals[phase][slotIdx] and saves to IDB */
-    STATE.selectMeal(currentPhase, mi, selectedMeals[mi]);
+      grid.appendChild(card);
+    });
+
     updateSummary();
   }
 
@@ -627,15 +319,22 @@ window.registerPage('nutrition', function initNutrition() {
      Shown at the top of the page (always visible).
   ══════════════════════════════════════════════════════════════ */
   function updateSummary() {
-    let cal = 0, pro = 0, carb = 0, fat = 0, cnt = 0;
-    const allMeals = getMeals(currentPhase);
-    selectedMeals.forEach((oi, mi) => {
-      if (oi !== null && allMeals[mi][oi]) {
-        const o = allMeals[mi][oi];
-        cal += o.calories; pro += o.protein; carb += o.carbs; fat += o.fats;
-        cnt++;
-      }
+    const today = new Date().toISOString().slice(0, 10);
+    const plan  = STATE.data.nutrition.mealPlan[today] || {};
+    const collection = getUnifiedMealCollection();
+    const totals = { calories: 0, protein: 0, carbs: 0, fats: 0 };
+    ['breakfast','lunch','dinner','snack'].forEach(slot => {
+      const mid = plan[slot];
+      if (!mid) return;
+      const meal = collection.find(m => m.id === mid);
+      if (!meal) return;
+      totals.calories += meal.totalCalories || 0;
+      totals.protein  += meal.totalProtein  || 0;
+      totals.carbs    += meal.totalCarbs    || 0;
+      totals.fats     += meal.totalFats     || 0;
     });
+    const cal = totals.calories, pro = totals.protein, carb = totals.carbs, fat = totals.fats;
+    const cnt = ['breakfast','lunch','dinner','snack'].filter(slot => plan[slot]).length;
 
     /* Targets come from the macro calculator (saved in Settings) */
     const targets = computeMacros(ns.calcWeight, ns.calcGoal, ns.calcActivity);
@@ -1025,52 +724,72 @@ window.registerPage('nutrition', function initNutrition() {
   /* ══════════════════════════════════════════════════════════════
      USER MEAL PICKER (assign to plan slot)
   ══════════════════════════════════════════════════════════════ */
-  function openUserMealPicker(slotIdx) {
-    const SLOT_KEYS = ['breakfast','lunch','dinner','snack'];
+  function openMealCollectionPicker(slotIdx) {
+    const SLOT_KEYS = ['breakfast', 'lunch', 'dinner', 'snack'];
     const slotKey   = SLOT_KEYS[slotIdx];
-    const today     = new Date().toISOString().slice(0,10);
-    const meals     = (STATE.data.nutrition.userMeals||[]).filter(m => !m.slots || m.slots.length===0 || m.slots.includes(slotKey));
+    const today     = new Date().toISOString().slice(0, 10);
+    let pickerQuery = '';
 
-    let overlay = document.getElementById('userMealPickerOverlay');
+    let overlay = document.getElementById('mealCollectionPickerOverlay');
     if (!overlay) {
       overlay = document.createElement('div');
-      overlay.id = 'userMealPickerOverlay';
+      overlay.id = 'mealCollectionPickerOverlay';
       overlay.className = 'food-picker-overlay';
+      overlay.style.display = 'none';
       document.body.appendChild(overlay);
     }
 
-    overlay.innerHTML = `
-      <div class="food-picker-sheet">
-        <div class="food-picker-header">
-          <span style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700">Assign to ${slotKey.charAt(0).toUpperCase()+slotKey.slice(1)}</span>
-          <button id="umpClose" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px">×</button>
-        </div>
-        <div class="food-picker-body">
-          ${meals.length===0
-            ? `<div style="text-align:center;color:var(--muted);padding:30px 0;font-size:13px">No saved meals yet.<br>Build meals in the Customize tab.</div>`
-            : meals.map(m=>`
-              <div class="food-picker-row" data-meal="${m.id}" style="flex-direction:column;align-items:flex-start;gap:4px">
-                <div style="font-weight:600;font-size:13px">${m.name}</div>
-                <div style="display:flex;gap:5px">
-                  <span class="mm mm-cal">${m.totalCalories}kcal</span>
-                  <span class="mm mm-p">${m.totalProtein}P</span>
-                  <span class="mm mm-c">${m.totalCarbs}C</span>
-                  <span class="mm mm-f">${m.totalFats}F</span>
-                </div>
-              </div>`).join('')}
-        </div>
-      </div>`;
+    function renderPicker() {
+      const q    = pickerQuery.toLowerCase();
+      const all  = getUnifiedMealCollection();
+      const meals = q ? all.filter(m => m.name.toLowerCase().includes(q)) : all;
 
-    overlay.style.display = 'flex';
-    overlay.querySelector('#umpClose').addEventListener('click', () => { overlay.style.display='none'; });
-    overlay.addEventListener('click', e => { if(e.target===overlay) overlay.style.display='none'; });
-    overlay.querySelectorAll('[data-meal]').forEach(row => {
-      row.addEventListener('click', () => {
-        STATE.assignMealToSlot(today, slotKey, row.dataset.meal);
-        overlay.style.display = 'none';
-        renderPhase();
+      overlay.innerHTML = `
+        <div class="food-picker-sheet">
+          <div class="food-picker-header">
+            <span style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700">Choose Meal — ${slotKey.charAt(0).toUpperCase() + slotKey.slice(1)}</span>
+            <button id="mcpClose" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px">×</button>
+          </div>
+          <div style="padding:10px 16px 0;flex-shrink:0">
+            <input id="mcpSearch" type="text" class="form-input" placeholder="Search meals…" value="${pickerQuery}" style="margin-bottom:8px">
+          </div>
+          <div class="food-picker-body">
+            ${meals.length === 0
+              ? `<div style="text-align:center;color:var(--muted);padding:30px 0;font-size:13px">No meals found</div>`
+              : meals.map(m => `
+                <div class="food-picker-row" data-mid="${m.id}" style="flex-direction:column;align-items:flex-start;gap:4px">
+                  <div style="display:flex;align-items:center;gap:6px;width:100%">
+                    <span style="font-weight:600;font-size:13px;flex:1">${m.name}</span>
+                    ${m.category ? `<span class="category-badge ${catClass(m.category)}">${m.category}</span>` : ''}
+                    ${!m._base ? `<span style="font-size:9px;color:var(--accent);font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:0.5px">CUSTOM</span>` : ''}
+                  </div>
+                  <div style="display:flex;gap:5px">
+                    <span class="mm mm-cal">${m.totalCalories}kcal</span>
+                    <span class="mm mm-p">${m.totalProtein}P</span>
+                    <span class="mm mm-c">${m.totalCarbs}C</span>
+                    <span class="mm mm-f">${m.totalFats}F</span>
+                  </div>
+                </div>`).join('')}
+          </div>
+        </div>`;
+
+      overlay.style.display = 'flex';
+
+      overlay.querySelector('#mcpClose').addEventListener('click', () => { overlay.style.display = 'none'; });
+      overlay.addEventListener('click', e => { if (e.target === overlay) overlay.style.display = 'none'; });
+      overlay.querySelector('#mcpSearch').addEventListener('input', e => { pickerQuery = e.target.value; renderPicker(); });
+
+      overlay.querySelectorAll('[data-mid]').forEach(row => {
+        row.addEventListener('click', () => {
+          STATE.assignMealToSlot(today, slotKey, row.dataset.mid);
+          overlay.style.display = 'none';
+          renderPhase();
+          updateSummary();
+        });
       });
-    });
+    }
+
+    renderPicker();
   }
 
   /* ══════════════════════════════════════════════════════════════
