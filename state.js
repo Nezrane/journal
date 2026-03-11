@@ -812,6 +812,17 @@ window.STATE = {
     if (nt.mealPlan[date]) nt.mealPlan[date][slot] = null;
     this.save();
   },
+  addQuickAdd(date, item) {
+    const nt = this.data.nutrition;
+    if (!nt.mealPlan[date]) nt.mealPlan[date] = { breakfast:null, lunch:null, dinner:null, snack:null };
+    if (!Array.isArray(nt.mealPlan[date].quickAdds)) nt.mealPlan[date].quickAdds = [];
+    nt.mealPlan[date].quickAdds.push({ ...item, addedAt: new Date().toISOString() });
+    this.save();
+  },
+  removeQuickAdd(date, idx) {
+    const day = this.data.nutrition.mealPlan[date];
+    if (day?.quickAdds) { day.quickAdds.splice(idx, 1); this.save(); }
+  },
 
   setSlotOptions(slotIdx, mealIds) {
     this.data.nutrition.slotOptions[slotIdx] = mealIds.slice(0, 15);
