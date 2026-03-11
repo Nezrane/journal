@@ -185,15 +185,6 @@ window.registerPage('nutrition', function initNutrition() {
         </div>
       </div>
 
-      <!-- Whole Foods reference -->
-      <div class="section-label">Whole Foods Reference</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Top nutrient-dense options. Build meals around these.</div>
-      <div class="card">
-        <div class="card-body" style="padding:12px 16px">
-          <div class="whole-foods-compact-grid" id="wholeFoodsCompact"></div>
-        </div>
-      </div>
-
       <!-- Meal Builder + Food Library -->
       <div id="mealBuilderSection" style="margin-bottom:24px"></div>
       <div id="foodLibrarySection" style="margin-bottom:24px"></div>
@@ -1222,26 +1213,6 @@ window.registerPage('nutrition', function initNutrition() {
   });
   renderNtCalcResults();
   renderPhaseSuggestion();
-
-  /* ══════════════════════════════════════════════════════════════
-     WHOLE FOODS — compact multi-column grid (all categories in one card)
-  ══════════════════════════════════════════════════════════════ */
-  const wfCompact = document.getElementById('wholeFoodsCompact');
-  (APP_DATA.wholeFoods || []).forEach(cat => {
-    const col = document.createElement('div');
-    col.className = 'wf-col';
-    col.innerHTML = `
-      <div class="wf-col-header">
-        <span style="font-size:16px">${cat.icon}</span>
-        <span>${cat.category}</span>
-      </div>
-      ${cat.items.map(item => `
-        <div class="wf-item${item.top ? ' wf-top' : ''}">
-          <div class="wf-item-name">${item.name}${item.top ? ' ⭐' : ''}</div>
-          <div class="wf-item-highlight">${item.highlight}</div>
-        </div>`).join('')}`;
-    wfCompact.appendChild(col);
-  });
 
   /* ── Nutrition principles ── */
   const principleHTML = (APP_DATA.healthPrinciples?.nutrition || []).map(p => `
