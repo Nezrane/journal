@@ -1054,30 +1054,29 @@ window.registerPage('nutrition', function initNutrition() {
     const fPct = Math.round((m.fats    * 9 / m.calories) * 100);
     const adj  = ntCalcGoal === 'bulk' ? '+300 surplus' : ntCalcGoal === 'cut' ? '−500 deficit' : 'maintenance';
     inner.querySelector('#ntCalcResults').innerHTML = `
-      <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px">
-        <div style="flex-shrink:0;text-align:center;min-width:80px">
-          <div style="font-family:'Rajdhani',sans-serif;font-size:42px;font-weight:700;color:var(--accent3);line-height:1">${m.calories.toLocaleString()}</div>
-          <div style="font-family:'Rajdhani',sans-serif;font-size:11px;color:var(--muted);font-weight:600;margin-top:2px">kcal / day</div>
-          <div style="font-size:9.5px;color:var(--muted);margin-top:4px;line-height:1.4">TDEE ${m.tdee.toLocaleString()}<br>${adj}<br>BMI ${calcBMI(ntCalcWeight, ntCalcHeight).toFixed(1)}</div>
+      <div class="macro-calc-breakdown" style="grid-template-columns:1fr 1fr 1fr 1fr;margin-bottom:10px">
+        <div class="macro-calc-macro" style="--mc:100%;--col:var(--accent3)">
+          <div class="macro-calc-bar"><div class="macro-calc-bar-fill"></div></div>
+          <div class="macro-calc-val" style="color:var(--accent3)">${m.calories.toLocaleString()}</div>
+          <div class="macro-calc-lbl">Calories</div>
         </div>
-        <div class="macro-calc-breakdown" style="flex:1">
-          <div class="macro-calc-macro" style="--mc:${pPct}%;--col:#f5a623">
-            <div class="macro-calc-bar"><div class="macro-calc-bar-fill"></div></div>
-            <div class="macro-calc-val">${m.protein}g</div>
-            <div class="macro-calc-lbl">Protein (${pPct}%)</div>
-          </div>
-          <div class="macro-calc-macro" style="--mc:${cPct}%;--col:#42c4f5">
-            <div class="macro-calc-bar"><div class="macro-calc-bar-fill"></div></div>
-            <div class="macro-calc-val">${m.carbs}g</div>
-            <div class="macro-calc-lbl">Carbs (${cPct}%)</div>
-          </div>
-          <div class="macro-calc-macro" style="--mc:${fPct}%;--col:#c97bff">
-            <div class="macro-calc-bar"><div class="macro-calc-bar-fill"></div></div>
-            <div class="macro-calc-val">${m.fats}g</div>
-            <div class="macro-calc-lbl">Fats (${fPct}%)</div>
-          </div>
+        <div class="macro-calc-macro" style="--mc:${pPct}%;--col:#f5a623">
+          <div class="macro-calc-bar"><div class="macro-calc-bar-fill"></div></div>
+          <div class="macro-calc-val">${m.protein}g</div>
+          <div class="macro-calc-lbl">Protein (${pPct}%)</div>
         </div>
-      </div>`;
+        <div class="macro-calc-macro" style="--mc:${cPct}%;--col:#42c4f5">
+          <div class="macro-calc-bar"><div class="macro-calc-bar-fill"></div></div>
+          <div class="macro-calc-val">${m.carbs}g</div>
+          <div class="macro-calc-lbl">Carbs (${cPct}%)</div>
+        </div>
+        <div class="macro-calc-macro" style="--mc:${fPct}%;--col:#c97bff">
+          <div class="macro-calc-bar"><div class="macro-calc-bar-fill"></div></div>
+          <div class="macro-calc-val">${m.fats}g</div>
+          <div class="macro-calc-lbl">Fats (${fPct}%)</div>
+        </div>
+      </div>
+      <div style="font-size:10px;color:var(--muted);line-height:1.5">TDEE ${m.tdee.toLocaleString()} kcal · ${adj} · BMI ${calcBMI(ntCalcWeight, ntCalcHeight).toFixed(1)}</div>`;
   }
 
   function ntSaveAndRender() {
