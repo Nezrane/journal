@@ -812,11 +812,11 @@ window.STATE = {
     if (nt.mealPlan[date]) nt.mealPlan[date][slot] = null;
     this.save();
   },
-  addQuickAdd(date, item) {
+  addQuickAdd(date, slotKey, item) {
     const nt = this.data.nutrition;
     if (!nt.mealPlan[date]) nt.mealPlan[date] = { breakfast:null, lunch:null, dinner:null, snack:null };
     if (!Array.isArray(nt.mealPlan[date].quickAdds)) nt.mealPlan[date].quickAdds = [];
-    nt.mealPlan[date].quickAdds.push({ ...item, addedAt: new Date().toISOString() });
+    nt.mealPlan[date].quickAdds.push({ ...item, slot: slotKey, addedAt: new Date().toISOString() });
     this.save();
   },
   removeQuickAdd(date, idx) {

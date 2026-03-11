@@ -137,18 +137,6 @@ window.registerPage('nutrition', function initNutrition() {
       <!-- Meal slots -->
       <div class="meals-grid" id="mealsGrid"></div>
 
-      <!-- Quick Add -->
-      <div class="card" id="quickAddCard" style="margin-bottom:14px">
-        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
-          <div class="card-title">Quick Add Food</div>
-          <button id="openQuickAddBtn" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-family:'Rajdhani',sans-serif;font-weight:700;cursor:pointer">+ Add</button>
-        </div>
-        <div class="card-body" style="padding:8px 16px 12px">
-          <div id="quickAddList"></div>
-          <div id="quickAddEmpty" style="font-size:12px;color:var(--muted);display:none">No quick adds yet — tap + Add to log a one-off food.</div>
-        </div>
-      </div>
-
       <!-- Nutrition Principles -->
       <div class="section-label" style="margin-top:8px">Nutrition Principles</div>
       <div class="grid-2" id="nutritionPrinciplesPlan"></div>
@@ -295,6 +283,7 @@ window.registerPage('nutrition', function initNutrition() {
       const options    = optionIds.map(id => collection.find(m => m.id === id)).filter(Boolean);
       const selectedId = plan[slotKey] || null;
       const tgt        = slotTargets[mi];
+      const quickAdds  = (plan.quickAdds || []).filter(qa => qa.slot === slotKey);
 
       const card = document.createElement('div');
       card.className = 'meal-card';
@@ -313,9 +302,38 @@ window.registerPage('nutrition', function initNutrition() {
           ${selectedId ? `<span style="font-size:10px;color:var(--accent);font-family:'Rajdhani',sans-serif;font-weight:700">Selected ✓</span>` : ''}
         </div>
         <div class="meal-options-scroll" id="slot-scroll-${mi}"></div>
-        ${options.length === 0 ? `<div style="padding:8px 14px 12px;font-size:12px;color:var(--muted)">No options — add meals in Customize tab.</div>` : ''}
+        ${options.length === 0 ? `<div style="padding:4px 14px 8px;font-size:12px;color:var(--muted)">No options — add meals in Customize tab.</div>` : ''}
+        ${quickAdds.length > 0 ? `
+        <div style="padding:6px 14px 0;border-top:1px solid var(--border);margin-top:4px">
+          ${quickAdds.map((qa) => {
+            const realIdx = (plan.quickAdds || []).indexOf(qa);
+            return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0">
+              <div>
+                <span style="font-size:12px;font-weight:600">${qa.name}</span>
+                <span style="font-size:11px;color:var(--muted);margin-left:6px">${qa.calories}kcal${qa.protein ? ` · ${qa.protein}P` : ''}${qa.carbs ? ` · ${qa.carbs}C` : ''}${qa.fats ? ` · ${qa.fats}F` : ''}</span>
+              </div>
+              <button data-qa-rm="${realIdx}" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:2px 6px;line-height:1">×</button>
+            </div>`;
+          }).join('')}
+        </div>` : ''}
+        <div style="padding:8px 14px 12px;${quickAdds.length > 0 ? 'padding-top:4px;' : ''}">
+          <button class="slot-quick-add-btn" data-slot-key="${slotKey}" style="width:100%;padding:7px;background:none;border:1px dashed var(--border);border-radius:8px;color:var(--muted);font-size:12px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-weight:600;letter-spacing:0.5px">+ Quick Add Food</button>
+        </div>
       `;
       grid.appendChild(card);
+
+      /* Quick add remove buttons */
+      card.querySelectorAll('[data-qa-rm]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          STATE.removeQuickAdd(today, parseInt(btn.dataset.qaRm));
+          renderPhase();
+        });
+      });
+
+      /* Quick add open modal */
+      card.querySelector('.slot-quick-add-btn').addEventListener('click', () => {
+        openQuickAddModal(slotKey);
+      });
 
       const list = card.querySelector(`#slot-scroll-${mi}`);
       list.style.cursor = 'grab';
@@ -353,17 +371,18 @@ window.registerPage('nutrition', function initNutrition() {
             </div>
           </div>`;
 
-        let pointerDownX = 0;
-        item.addEventListener('pointerdown', e => { pointerDownX = e.clientX; });
-        item.addEventListener('click', e => {
-          if (Math.abs(e.clientX - pointerDownX) > 6) return;
+        /* Use a drag-flag instead of clientX delta — more reliable on mobile touch */
+        let dragged = false;
+        item.addEventListener('pointerdown', () => { dragged = false; });
+        item.addEventListener('pointermove', () => { dragged = true; });
+        item.addEventListener('click', () => {
+          if (dragged) return;
           if (isSelected) {
             STATE.clearMealSlot(today, slotKey);
           } else {
             STATE.assignMealToSlot(today, slotKey, meal.id);
           }
           renderPhase();
-          updateSummary();
         });
 
         list.appendChild(item);
@@ -548,8 +567,6 @@ window.registerPage('nutrition', function initNutrition() {
       totals.fats     += qa.fats     || 0;
     });
     const cal = totals.calories, pro = totals.protein, carb = totals.carbs, fat = totals.fats;
-    const cnt = ['breakfast','lunch','dinner','snack'].filter(slot => plan[slot]).length;
-
     /* Targets come from the macro calculator (saved in Settings) */
     const targets = computeMacros(ns.calcWeight, ns.calcGoal, ns.calcActivity);
 
@@ -591,62 +608,29 @@ window.registerPage('nutrition', function initNutrition() {
         </div>`;
     }).join('');
 
-    /* Match badge */
+    /* Match badge — always update */
     const badge = document.getElementById('matchBadge');
-    badge.className = 'match-badge';
-    if (cnt === 4) {
-      const diff = cal - targets.calories;
-      if (Math.abs(diff) <= 50) {
-        badge.classList.add('perfect');
+    if (badge) {
+      badge.className = 'match-badge';
+      if (cal === 0) {
         badge.innerHTML = `<div class="checkmark"><svg viewBox="0 0 8 8" fill="none"><polyline points="1,4 3,6 7,2" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></div> On target ✓`;
       } else {
-        badge.classList.add('mismatch');
-        badge.innerHTML = `&#9888; ${diff > 0 ? '+' : ''}${diff} kcal from target`;
+        const diff = cal - targets.calories;
+        if (Math.abs(diff) <= 50) {
+          badge.classList.add('perfect');
+          badge.innerHTML = `<div class="checkmark"><svg viewBox="0 0 8 8" fill="none"><polyline points="1,4 3,6 7,2" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></div> On target ✓`;
+        } else {
+          badge.classList.add('mismatch');
+          badge.innerHTML = `&#9888; ${diff > 0 ? '+' : ''}${diff} kcal`;
+        }
       }
     }
   }
 
   /* ══════════════════════════════════════════════════════════════
-     QUICK ADD — one-off food entries for today
+     QUICK ADD MODAL — one-off food per slot
   ══════════════════════════════════════════════════════════════ */
-  function renderQuickAdds() {
-    const today = new Date().toISOString().slice(0, 10);
-    const plan  = STATE.data.nutrition.mealPlan[today] || {};
-    const items = plan.quickAdds || [];
-    const list  = document.getElementById('quickAddList');
-    const empty = document.getElementById('quickAddEmpty');
-    if (!list) return;
-    if (items.length === 0) {
-      list.innerHTML = '';
-      if (empty) empty.style.display = 'block';
-      return;
-    }
-    if (empty) empty.style.display = 'none';
-    list.innerHTML = items.map((qa, i) => `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
-        <div>
-          <div style="font-size:13px;font-weight:600;color:var(--text)">${qa.name || 'Food'}</div>
-          <div style="display:flex;gap:5px;margin-top:3px">
-            <span class="mm mm-cal">${qa.calories}kcal</span>
-            ${qa.protein ? `<span class="mm mm-p">${qa.protein}g P</span>` : ''}
-            ${qa.carbs   ? `<span class="mm mm-c">${qa.carbs}g C</span>` : ''}
-            ${qa.fats    ? `<span class="mm mm-f">${qa.fats}g F</span>` : ''}
-          </div>
-        </div>
-        <button data-qa-remove="${i}" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px 8px;line-height:1">×</button>
-      </div>`).join('');
-
-    list.querySelectorAll('[data-qa-remove]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const idx = parseInt(btn.dataset.qaRemove);
-        STATE.removeQuickAdd(today, idx);
-        renderQuickAdds();
-        updateSummary();
-      });
-    });
-  }
-
-  function openQuickAddModal() {
+  function openQuickAddModal(slotKey) {
     let overlay = document.getElementById('quickAddOverlay');
     if (!overlay) {
       overlay = document.createElement('div');
@@ -658,7 +642,7 @@ window.registerPage('nutrition', function initNutrition() {
     overlay.innerHTML = `
       <div class="food-picker-sheet" style="max-height:80vh">
         <div class="food-picker-header">
-          <span style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700">Quick Add Food</span>
+          <span style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700">Quick Add · ${slotKey.charAt(0).toUpperCase() + slotKey.slice(1)}</span>
           <button id="qaClose" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:0 4px;line-height:1">×</button>
         </div>
         <div class="food-picker-body" style="padding:16px">
@@ -709,10 +693,9 @@ window.registerPage('nutrition', function initNutrition() {
       const fats     = parseFloat(document.getElementById('qaFats').value)     || 0;
       if (!calories && !protein && !carbs && !fats) return;
       const today = new Date().toISOString().slice(0, 10);
-      STATE.addQuickAdd(today, { name, calories, protein, carbs, fats });
+      STATE.addQuickAdd(today, slotKey, { name, calories, protein, carbs, fats });
       overlay.style.display = 'none';
-      renderQuickAdds();
-      updateSummary();
+      renderPhase();
     });
   }
 
@@ -1263,11 +1246,8 @@ window.registerPage('nutrition', function initNutrition() {
   document.getElementById('nutritionPrinciplesPlan').innerHTML = principleHTML;
 
   renderPhase();
-  renderQuickAdds();
   renderMacroDistribution();
   renderSlotCustomizer();
   renderMealBuilder();
   renderFoodLibrary();
-
-  document.getElementById('openQuickAddBtn').addEventListener('click', openQuickAddModal);
 });
