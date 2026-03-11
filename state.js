@@ -192,6 +192,7 @@ function _defaultState() {
       foodLibrary:    [],
       userMeals:      [],
       mealPlan:       {},
+      slotOptions:    { 0:[], 1:[], 2:[], 3:[] },
     },
 
     /* ── Passions ──
@@ -265,6 +266,8 @@ window.STATE = {
       if (!Array.isArray(nt.foodLibrary)) nt.foodLibrary = [];
       if (!Array.isArray(nt.userMeals))   nt.userMeals   = [];
       if (typeof nt.mealPlan !== 'object' || Array.isArray(nt.mealPlan)) nt.mealPlan = {};
+      if (typeof nt.slotOptions !== 'object' || Array.isArray(nt.slotOptions)) nt.slotOptions = { 0:[], 1:[], 2:[], 3:[] };
+      [0,1,2,3].forEach(i => { if (!Array.isArray(nt.slotOptions[i])) nt.slotOptions[i] = []; });
       if (wk.cycleCount  === undefined)    wk.cycleCount   = 0;
       if (wk.weekNumber  === undefined)    wk.weekNumber   = 1;
       /* Migrate old Pull-first schedule to the new Upper-first schedule */
@@ -805,6 +808,11 @@ window.STATE = {
   clearMealSlot(date, slot) {
     const nt = this.data.nutrition;
     if (nt.mealPlan[date]) nt.mealPlan[date][slot] = null;
+    this.save();
+  },
+
+  setSlotOptions(slotIdx, mealIds) {
+    this.data.nutrition.slotOptions[slotIdx] = mealIds.slice(0, 15);
     this.save();
   },
 

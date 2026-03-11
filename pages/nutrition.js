@@ -200,6 +200,9 @@ window.registerPage('nutrition', function initNutrition() {
         </div>
       </div>
 
+      <!-- Slot Meal Options -->
+      <div id="slotCustomizerSection" style="margin-bottom:24px"></div>
+
       <!-- Meal Builder + Food Library -->
       <div id="mealBuilderSection" style="margin-bottom:24px"></div>
       <div id="foodLibrarySection" style="margin-bottom:24px"></div>
@@ -252,22 +255,24 @@ window.registerPage('nutrition', function initNutrition() {
   }
 
   /* ══════════════════════════════════════════════════════════════
-     RENDER PHASE — rebuilds meal grid + updates summary
+     RENDER PHASE — horizontal scroll of curated slot options
   ══════════════════════════════════════════════════════════════ */
   function renderPhase() {
     const grid = document.getElementById('mealsGrid');
     if (!grid) return;
     grid.innerHTML = '';
 
-    const today   = new Date().toISOString().slice(0, 10);
-    const plan    = STATE.data.nutrition.mealPlan[today] || {};
-    const SLOT_KEYS   = ['breakfast', 'lunch', 'dinner', 'snack'];
-    const collection  = getUnifiedMealCollection();
+    const today      = new Date().toISOString().slice(0, 10);
+    const plan       = STATE.data.nutrition.mealPlan[today] || {};
+    const SLOT_KEYS  = ['breakfast', 'lunch', 'dinner', 'snack'];
+    const collection = getUnifiedMealCollection();
+    const slotOpts   = STATE.data.nutrition.slotOptions || { 0:[], 1:[], 2:[], 3:[] };
 
     MEAL_TITLES.forEach((title, mi) => {
       const slotKey    = SLOT_KEYS[mi];
-      const assignedId = plan[slotKey];
-      const assigned   = assignedId ? collection.find(m => m.id === assignedId) : null;
+      const optionIds  = slotOpts[mi] || [];
+      const options    = optionIds.map(id => collection.find(m => m.id === id)).filter(Boolean);
+      const selectedId = plan[slotKey] || null;
 
       const card = document.createElement('div');
       card.className = 'meal-card';
@@ -277,41 +282,141 @@ window.registerPage('nutrition', function initNutrition() {
             <div class="meal-card-number">Slot ${mi + 1}</div>
             <div class="meal-card-title">${title}</div>
           </div>
-          ${assigned ? `<button class="day-tab" data-change="${mi}" style="font-size:11px;padding:4px 12px">Change</button>` : ''}
+          ${selectedId ? `<span style="font-size:10px;color:var(--accent);font-family:'Rajdhani',sans-serif;font-weight:700">Selected ✓</span>` : ''}
         </div>
-        ${assigned ? `
-          <div style="padding:10px 12px 12px">
-            <div style="font-size:14px;font-weight:600;margin-bottom:6px">${assigned.name}</div>
-            ${assigned.category ? `<span class="category-badge ${catClass(assigned.category)}" style="margin-bottom:8px;display:inline-block">${assigned.category}</span>` : ''}
-            ${assigned.cuisine ? `<span class="cuisine-tag" style="margin-left:6px">${assigned.cuisine}</span>` : ''}
-            <div class="meal-macros" style="margin-top:8px">
-              <span class="mm mm-cal">${assigned.totalCalories}kcal</span>
-              <span class="mm mm-p">${assigned.totalProtein}P</span>
-              <span class="mm mm-c">${assigned.totalCarbs}C</span>
-              <span class="mm mm-f">${assigned.totalFats}F</span>
-            </div>
-            <button data-clear="${mi}" style="margin-top:10px;background:none;border:none;color:var(--danger);font-size:11px;cursor:pointer;padding:0">Remove</button>
-          </div>` : `
-          <div style="padding:10px 12px 14px">
-            <button class="day-tab" data-choose="${mi}" style="width:100%;padding:10px;font-size:13px;color:var(--muted)">+ Choose Meal</button>
-          </div>`}
+        <div class="meal-options-scroll" id="slot-scroll-${mi}"></div>
+        ${options.length === 0 ? `<div style="padding:8px 14px 12px;font-size:12px;color:var(--muted)">No options — add meals in Customize tab.</div>` : ''}
       `;
+      grid.appendChild(card);
 
-      card.querySelectorAll('[data-choose],[data-change]').forEach(btn => {
-        btn.addEventListener('click', () => openMealCollectionPicker(mi));
-      });
-      card.querySelectorAll('[data-clear]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          STATE.clearMealSlot(today, slotKey);
+      const list = card.querySelector(`#slot-scroll-${mi}`);
+      list.style.cursor = 'grab';
+      list.style.userSelect = 'none';
+      (function initDrag(el) {
+        let sx = 0, sl = 0, active = false;
+        el.addEventListener('mousedown', e => { active=true; sx=e.pageX; sl=el.scrollLeft; el.style.cursor='grabbing'; });
+        el.addEventListener('mousemove', e => { if (!active) return; el.scrollLeft = sl-(e.pageX-sx); });
+        ['mouseup','mouseleave'].forEach(ev => el.addEventListener(ev, () => { active=false; el.style.cursor='grab'; }));
+      }(list));
+
+      options.forEach(meal => {
+        const isSelected = meal.id === selectedId;
+        const catBg = meal.category === 'Simple' ? 'rgba(76,175,158,0.13)' : meal.category === 'Premade' ? 'rgba(124,106,247,0.13)' : meal.category === 'Gourmet' ? 'rgba(240,156,58,0.13)' : 'rgba(107,138,170,0.08)';
+
+        const item = document.createElement('div');
+        item.className = 'meal-option' + (isSelected ? ' selected' : '');
+        item.style.cssText = `flex:0 0 280px;min-height:160px;display:flex;flex-direction:column;justify-content:space-between`;
+
+        item.innerHTML = `
+          <div class="meal-option-top" style="background:${catBg};margin:-14px -14px 8px;padding:10px 14px;border-radius:10px 10px 0 0;min-height:58px;align-items:flex-start">
+            <div class="meal-option-name">${meal.name}</div>
+            <div style="display:flex;gap:4px;align-items:center;flex-shrink:0">
+              ${meal.category ? `<div class="category-badge ${catClass(meal.category)}">${meal.category}</div>` : ''}
+              ${!meal._base ? `<span style="font-size:9px;color:var(--accent);font-family:'Rajdhani',sans-serif;font-weight:700">CUSTOM</span>` : ''}
+            </div>
+          </div>
+          <div class="meal-option-desc" style="font-size:12px;color:var(--muted);flex:1">${meal.cuisine || ''}</div>
+          <div class="meal-option-bottom">
+            <div class="meal-macros">
+              <span class="mm mm-cal">${meal.totalCalories}kcal</span>
+              <span class="mm mm-p">${meal.totalProtein}P</span>
+              <span class="mm mm-c">${meal.totalCarbs}C</span>
+              <span class="mm mm-f">${meal.totalFats}F</span>
+            </div>
+          </div>`;
+
+        let pointerDownX = 0;
+        item.addEventListener('pointerdown', e => { pointerDownX = e.clientX; });
+        item.addEventListener('click', e => {
+          if (Math.abs(e.clientX - pointerDownX) > 6) return;
+          if (isSelected) {
+            STATE.clearMealSlot(today, slotKey);
+          } else {
+            STATE.assignMealToSlot(today, slotKey, meal.id);
+          }
           renderPhase();
           updateSummary();
         });
-      });
 
-      grid.appendChild(card);
+        list.appendChild(item);
+      });
     });
 
     updateSummary();
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     SLOT CUSTOMIZER — manage up to 15 meal options per slot
+  ══════════════════════════════════════════════════════════════ */
+  function renderSlotCustomizer() {
+    const el = document.getElementById('slotCustomizerSection');
+    if (!el) return;
+    const collection = getUnifiedMealCollection();
+    const slotOpts   = STATE.data.nutrition.slotOptions || { 0:[], 1:[], 2:[], 3:[] };
+
+    el.innerHTML = `<div class="section-label" style="margin-bottom:4px">Meal Plan Options</div>
+      <div style="font-size:11.5px;color:var(--muted);margin-bottom:14px">Add up to 15 meals per slot. These appear as swipeable options on the Plan tab.</div>`;
+
+    MEAL_TITLES.forEach((title, mi) => {
+      const optionIds = slotOpts[mi] || [];
+      const options   = optionIds.map(id => collection.find(m => m.id === id)).filter(Boolean);
+      const atMax     = options.length >= 15;
+
+      const block = document.createElement('div');
+      block.style.cssText = 'margin-bottom:18px';
+      block.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div>
+            <div style="font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">Slot ${mi+1}</div>
+            <div style="font-size:13px;font-weight:600">${title}</div>
+          </div>
+          <span style="font-size:11px;color:var(--muted)">${options.length}/15</span>
+        </div>
+        <div class="card" style="overflow:hidden">
+          <div style="padding:8px 12px">
+            ${options.length === 0
+              ? `<div style="padding:10px 0;font-size:12px;color:var(--muted);text-align:center">No meals added yet</div>`
+              : options.map((m, oi) => `
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+                  <div style="flex:1;min-width:0">
+                    <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.name}</div>
+                    <div style="font-size:10.5px;color:var(--muted)">${m.totalCalories}kcal · ${m.totalProtein}P ${m.totalCarbs}C ${m.totalFats}F</div>
+                  </div>
+                  ${m.category ? `<span class="category-badge ${catClass(m.category)}">${m.category}</span>` : ''}
+                  <button class="builder-remove-btn" data-slot="${mi}" data-oi="${oi}">×</button>
+                </div>`).join('')}
+            <button class="day-tab" data-add-slot="${mi}" style="width:100%;padding:8px;font-size:12px;margin-top:8px${atMax ? ';opacity:0.4;pointer-events:none' : ''}">${atMax ? 'Max 15 reached' : '+ Add Meal'}</button>
+          </div>
+        </div>`;
+
+      block.querySelectorAll('[data-oi]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const si = parseInt(btn.dataset.slot);
+          const ids = [...(STATE.data.nutrition.slotOptions[si] || [])];
+          ids.splice(parseInt(btn.dataset.oi), 1);
+          STATE.setSlotOptions(si, ids);
+          renderSlotCustomizer();
+          renderPhase();
+        });
+      });
+
+      block.querySelectorAll('[data-add-slot]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const si = parseInt(btn.dataset.addSlot);
+          openMealCollectionPicker(si, (mealId) => {
+            const ids = [...(STATE.data.nutrition.slotOptions[si] || [])];
+            if (!ids.includes(mealId) && ids.length < 15) {
+              ids.push(mealId);
+              STATE.setSlotOptions(si, ids);
+              renderSlotCustomizer();
+              renderPhase();
+            }
+          });
+        });
+      });
+
+      el.appendChild(block);
+    });
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -724,7 +829,7 @@ window.registerPage('nutrition', function initNutrition() {
   /* ══════════════════════════════════════════════════════════════
      USER MEAL PICKER (assign to plan slot)
   ══════════════════════════════════════════════════════════════ */
-  function openMealCollectionPicker(slotIdx) {
+  function openMealCollectionPicker(slotIdx, onPick) {
     const SLOT_KEYS = ['breakfast', 'lunch', 'dinner', 'snack'];
     const slotKey   = SLOT_KEYS[slotIdx];
     const today     = new Date().toISOString().slice(0, 10);
@@ -781,10 +886,14 @@ window.registerPage('nutrition', function initNutrition() {
 
       overlay.querySelectorAll('[data-mid]').forEach(row => {
         row.addEventListener('click', () => {
-          STATE.assignMealToSlot(today, slotKey, row.dataset.mid);
           overlay.style.display = 'none';
-          renderPhase();
-          updateSummary();
+          if (onPick) {
+            onPick(row.dataset.mid);
+          } else {
+            STATE.assignMealToSlot(today, slotKey, row.dataset.mid);
+            renderPhase();
+            updateSummary();
+          }
         });
       });
     }
@@ -943,6 +1052,7 @@ window.registerPage('nutrition', function initNutrition() {
   document.getElementById('nutritionPrinciplesPlan').innerHTML = principleHTML;
 
   renderPhase();
+  renderSlotCustomizer();
   renderMealBuilder();
   renderFoodLibrary();
 });
