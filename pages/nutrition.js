@@ -119,10 +119,7 @@ window.registerPage('nutrition', function initNutrition() {
             <div class="card-title" style="flex-shrink:0">Daily Macro Summary</div>
             <div id="planPhaseLabel" style="font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-top:2px"></div>
           </div>
-          <div class="match-badge" id="matchBadge" style="flex-shrink:0">
-            <div class="checkmark"><svg viewBox="0 0 8 8" fill="none"><polyline points="1,4 3,6 7,2" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></div>
-            On target ✓
-          </div>
+          <div class="match-badge" id="matchBadge" style="flex-shrink:0">— No meals yet</div>
         </div>
         <div class="card-body" style="padding:12px 16px">
           <div class="macro-summary-grid" id="macroSummaryGrid"></div>
@@ -581,6 +578,14 @@ window.registerPage('nutrition', function initNutrition() {
     const grid = document.getElementById('macroSummaryGrid');
     if (!grid) return;
 
+    /* When nothing is logged, show an empty-state prompt instead of grey empty bars */
+    if (cal === 0 && pro === 0 && carb === 0 && fat === 0) {
+      grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:18px 0;font-size:12px;color:var(--muted)">Select meals or quick-add a food below to track today's macros.</div>`;
+      const badge = document.getElementById('matchBadge');
+      if (badge) { badge.className = 'match-badge'; badge.innerHTML = '— No meals yet'; }
+      return;
+    }
+
     const macros = [
       { label:'Calories', eaten:cal,  target:targets.calories, unit:'kcal', color:'var(--accent3)' },
       { label:'Protein',  eaten:pro,  target:targets.protein,  unit:'g',    color:'#f5a623' },
@@ -612,17 +617,13 @@ window.registerPage('nutrition', function initNutrition() {
     const badge = document.getElementById('matchBadge');
     if (badge) {
       badge.className = 'match-badge';
-      if (cal === 0) {
+      const diff = cal - targets.calories;
+      if (Math.abs(diff) <= 50) {
+        badge.classList.add('perfect');
         badge.innerHTML = `<div class="checkmark"><svg viewBox="0 0 8 8" fill="none"><polyline points="1,4 3,6 7,2" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></div> On target ✓`;
       } else {
-        const diff = cal - targets.calories;
-        if (Math.abs(diff) <= 50) {
-          badge.classList.add('perfect');
-          badge.innerHTML = `<div class="checkmark"><svg viewBox="0 0 8 8" fill="none"><polyline points="1,4 3,6 7,2" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></div> On target ✓`;
-        } else {
-          badge.classList.add('mismatch');
-          badge.innerHTML = `&#9888; ${diff > 0 ? '+' : ''}${diff} kcal`;
-        }
+        badge.classList.add('mismatch');
+        badge.innerHTML = `&#9888; ${diff > 0 ? '+' : ''}${diff} kcal`;
       }
     }
   }
