@@ -44,12 +44,43 @@ window.registerPage('nutrition', function initNutrition() {
     return BASE_MEALS[phase][slotIdx].length;
   }
 
+  /* ── Food Library helpers ── */
+  function getAllFoods() {
+    const base   = (APP_DATA.foodLibrary || []);
+    const custom = (STATE.data.nutrition.foodLibrary || []);
+    return [...base, ...custom];
+  }
+
+  function filterFoods(query, category, type) {
+    return getAllFoods().filter(f => {
+      if (category && category !== 'All' && f.category !== category) return false;
+      if (type && type !== 'all' && f.type !== type) return false;
+      if (query) {
+        const q = query.toLowerCase();
+        if (!f.name.toLowerCase().includes(q) && !(f.brand||'').toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+  }
+
+  function computeMealTotals(ingredients) {
+    return ingredients.reduce((acc, ing) => {
+      acc.calories += ing.calories || 0;
+      acc.protein  += ing.protein  || 0;
+      acc.carbs    += ing.carbs    || 0;
+      acc.fats     += ing.fats     || 0;
+      return acc;
+    }, { calories:0, protein:0, carbs:0, fats:0 });
+  }
+
   let currentPhase  = ns.calcGoal || ns.currentPhase || 'maintain';
   let selectedMeals = ns.selectedMeals[currentPhase]
     ? [...ns.selectedMeals[currentPhase]]
     : [null, null, null, null];
 
   let activeTab = 'plan';
+  let builderMeal = { name:'', slots:[], ingredients:[] };
+  let foodLibFilter = { query:'', category:'All', type:'all' };
 
   const NUTRITION_TABS = [
     { id: 'plan',      label: 'Meal Plan' },
@@ -163,6 +194,10 @@ window.registerPage('nutrition', function initNutrition() {
         </div>
       </div>
 
+      <!-- Meal Builder + Food Library -->
+      <div id="mealBuilderSection" style="margin-bottom:24px"></div>
+      <div id="foodLibrarySection" style="margin-bottom:24px"></div>
+
       <!-- Nutrition Principles -->
       <div class="section-label" style="margin-top:8px">Nutrition Principles</div>
       <div class="grid-2" id="nutritionPrinciples"></div>
@@ -248,6 +283,33 @@ window.registerPage('nutrition', function initNutrition() {
   document.getElementById('addMealOverlay').addEventListener('click', e => {
     if (e.target === document.getElementById('addMealOverlay')) closeAddMealModal();
   });
+
+  /* ── Add Custom Food modal wiring ── */
+  const addFoodClose = document.getElementById('addFoodClose');
+  if (addFoodClose) addFoodClose.addEventListener('click', closeAddFoodModal);
+
+  const addFoodForm = document.getElementById('addFoodForm');
+  if (addFoodForm) {
+    addFoodForm.addEventListener('submit', e => {
+      e.preventDefault();
+      STATE.addFoodItem({
+        name:        document.getElementById('afName').value.trim(),
+        brand:       document.getElementById('afBrand').value.trim() || null,
+        category:    document.getElementById('afCategory').value,
+        type:        document.getElementById('afType').value,
+        servingSize: parseFloat(document.getElementById('afServingSize').value) || 0,
+        servingUnit: document.getElementById('afServingUnit').value,
+        calories:    parseFloat(document.getElementById('afCalories').value) || 0,
+        protein:     parseFloat(document.getElementById('afProtein').value)  || 0,
+        carbs:       parseFloat(document.getElementById('afCarbs').value)    || 0,
+        fats:        parseFloat(document.getElementById('afFats').value)     || 0,
+        fiber:       parseFloat(document.getElementById('afFiber').value)    || 0,
+        tags:        [],
+      });
+      closeAddFoodModal();
+      renderFoodLibrary();
+    });
+  }
 
   /* ── Meal description generator ── */
   function getMealDesc(opt) {
@@ -449,7 +511,8 @@ window.registerPage('nutrition', function initNutrition() {
 
       const list = card.querySelector(`#nl-${mi}`);
       /* Horizontal drag-scroll track */
-      list.style.cssText = 'display:flex;flex-direction:row;gap:8px;overflow-x:scroll;padding:8px 12px 10px;cursor:grab;user-select:none;-webkit-overflow-scrolling:touch;scrollbar-width:none';
+      list.style.cursor = 'grab';
+      list.style.userSelect = 'none';
       (function initDragScroll(el) {
         let startX = 0, startSL = 0, active = false;
         el.addEventListener('mousedown', e => {
@@ -463,12 +526,7 @@ window.registerPage('nutrition', function initNutrition() {
         ['mouseup', 'mouseleave'].forEach(evt => el.addEventListener(evt, () => {
           active = false; el.style.cursor = 'grab';
         }));
-        el.addEventListener('touchstart', e => {
-          startX = e.touches[0].pageX; startSL = el.scrollLeft;
-        }, { passive: true });
-        el.addEventListener('touchmove', e => {
-          el.scrollLeft = startSL - (e.touches[0].pageX - startX);
-        }, { passive: true });
+        // Touch: let CSS touch-action:pan-x handle it natively — no JS needed
       }(list));
 
       visible.forEach((opt, oi) => {
@@ -526,6 +584,39 @@ window.registerPage('nutrition', function initNutrition() {
       /* + Custom button */
       card.querySelector('.add-meal-btn').addEventListener('click', () => {
         openAddMealModal(mi);
+      });
+
+      /* Assign from Library row */
+      const today = new Date().toISOString().slice(0,10);
+      const plan  = STATE.data.nutrition.mealPlan[today] || {};
+      const SLOT_KEYS = ['breakfast','lunch','dinner','snack'];
+      const slotKey   = SLOT_KEYS[mi] || null;
+      const assignedMealId = slotKey ? plan[slotKey] : null;
+      const assignedMeal   = assignedMealId ? (STATE.data.nutrition.userMeals||[]).find(m=>m.id===assignedMealId) : null;
+
+      const assignRow = document.createElement('div');
+      assignRow.style.cssText = 'padding:6px 12px 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+      if (assignedMeal) {
+        assignRow.innerHTML = `
+          <span style="font-size:11.5px;color:var(--muted)">Library:</span>
+          <span style="font-size:12px;font-weight:600;color:var(--accent)">${assignedMeal.name}</span>
+          <span class="mm mm-cal">${assignedMeal.totalCalories}kcal</span>
+          <button class="day-tab" data-clear-slot="${mi}" style="margin-left:auto;padding:2px 9px;font-size:11px">Change</button>`;
+      } else {
+        assignRow.innerHTML = `
+          <button class="day-tab" data-assign-slot="${mi}" style="padding:3px 10px;font-size:11px;color:var(--muted)">+ Assign from Library</button>`;
+      }
+      card.appendChild(assignRow);
+
+      card.querySelectorAll('[data-assign-slot]').forEach(btn => {
+        btn.addEventListener('click', () => openUserMealPicker(parseInt(btn.dataset.assignSlot)));
+      });
+      card.querySelectorAll('[data-clear-slot]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const sk = (['breakfast','lunch','dinner','snack'])[parseInt(btn.dataset.clearSlot)];
+          STATE.clearMealSlot(today, sk);
+          renderPhase();
+        });
       });
     });
   }
@@ -609,6 +700,386 @@ window.registerPage('nutrition', function initNutrition() {
         badge.innerHTML = `&#9888; ${diff > 0 ? '+' : ''}${diff} kcal from target`;
       }
     }
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     FOOD PICKER OVERLAY
+  ══════════════════════════════════════════════════════════════ */
+  function openFoodPicker(onSelect) {
+    let pickerQuery    = '';
+    let pickerCategory = 'All';
+    const CATS = ['All','Proteins','Vegetables','Fruits','Grains & Breads','Dairy','Fats & Oils','Condiments','Snacks','Beverages'];
+
+    let overlay = document.getElementById('foodPickerOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'foodPickerOverlay';
+      overlay.className = 'food-picker-overlay';
+      overlay.style.display = 'none';
+      document.body.appendChild(overlay);
+    }
+
+    function renderPicker() {
+      const foods = filterFoods(pickerQuery, pickerCategory, 'all');
+      overlay.innerHTML = `
+        <div class="food-picker-sheet">
+          <div class="food-picker-header">
+            <span style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700">Add Ingredient</span>
+            <button id="fpClose" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px">×</button>
+          </div>
+          <div style="padding:10px 16px 0;flex-shrink:0">
+            <input id="fpSearch" type="text" class="form-input" placeholder="Search foods…" value="${pickerQuery}" style="margin-bottom:8px">
+            <div class="food-lib-filter-pills">
+              ${CATS.map(c=>`<button class="food-lib-pill${c===pickerCategory?' active':''}" data-cat="${c}">${c}</button>`).join('')}
+            </div>
+          </div>
+          <div class="food-picker-body" id="fpBody">
+            ${foods.length === 0 ? `<div style="text-align:center;color:var(--muted);padding:30px 0;font-size:13px">No foods found</div>` :
+              foods.map(f => `
+                <div class="food-picker-row" data-id="${f.id}">
+                  <div style="flex:1;min-width:0">
+                    <div class="food-picker-row-name">${f.name}${f.brand?`<span style="font-size:10px;color:var(--muted);margin-left:5px">${f.brand}</span>`:''}</div>
+                    <div style="font-size:10.5px;color:var(--muted)">${f.servingSize}${f.servingUnit} · ${f.calories}kcal · ${f.protein}P ${f.carbs}C ${f.fats}F</div>
+                  </div>
+                  <span class="food-type-badge food-type-${f.type}">${f.type}</span>
+                </div>`).join('')}
+          </div>
+        </div>`;
+
+      overlay.style.display = 'flex';
+
+      overlay.querySelector('#fpClose').addEventListener('click', () => { overlay.style.display='none'; });
+      overlay.addEventListener('click', e => { if(e.target===overlay) overlay.style.display='none'; });
+
+      overlay.querySelector('#fpSearch').addEventListener('input', e => {
+        pickerQuery = e.target.value;
+        renderPicker();
+      });
+
+      overlay.querySelectorAll('.food-lib-pill').forEach(btn => {
+        btn.addEventListener('click', () => { pickerCategory = btn.dataset.cat; renderPicker(); });
+      });
+
+      overlay.querySelectorAll('.food-picker-row').forEach(row => {
+        row.addEventListener('click', () => {
+          const food = getAllFoods().find(f => f.id === row.dataset.id);
+          if (!food) return;
+          showQtyPicker(food);
+        });
+      });
+    }
+
+    function showQtyPicker(food) {
+      let qty = 1;
+      const body = overlay.querySelector('#fpBody');
+      body.innerHTML = `
+        <div style="padding:16px 0">
+          <div style="font-size:15px;font-weight:600;margin-bottom:4px">${food.name}</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:16px">${food.servingSize}${food.servingUnit} per serving</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+            <button id="fpQtyMinus" style="width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:18px;cursor:pointer">−</button>
+            <span id="fpQtyVal" style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;min-width:40px;text-align:center">${qty}</span>
+            <button id="fpQtyPlus" style="width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:18px;cursor:pointer">+</button>
+            <span style="font-size:12px;color:var(--muted)">serving${qty!==1?'s':''}</span>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:16px" id="fpQtyMacros">
+            ${food.calories * qty}kcal · ${food.protein * qty}g P · ${food.carbs * qty}g C · ${food.fats * qty}g F
+          </div>
+          <button id="fpQtyConfirm" class="phase-btn active" style="width:100%;padding:11px;font-size:14px">Add to Meal</button>
+          <button id="fpQtyBack" style="width:100%;padding:8px;margin-top:8px;background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer">← Back</button>
+        </div>`;
+
+      function updateQtyDisplay() {
+        overlay.querySelector('#fpQtyVal').textContent = qty;
+        overlay.querySelector('#fpQtyMacros').textContent =
+          `${Math.round(food.calories*qty)}kcal · ${Math.round(food.protein*qty)}g P · ${Math.round(food.carbs*qty)}g C · ${Math.round(food.fats*qty)}g F`;
+      }
+
+      overlay.querySelector('#fpQtyMinus').addEventListener('click', () => { if(qty>0.5) { qty=Math.round((qty-0.5)*2)/2; updateQtyDisplay(); } });
+      overlay.querySelector('#fpQtyPlus').addEventListener('click',  () => { qty=Math.round((qty+0.5)*2)/2; updateQtyDisplay(); });
+      overlay.querySelector('#fpQtyBack').addEventListener('click',  () => renderPicker());
+      overlay.querySelector('#fpQtyConfirm').addEventListener('click', () => {
+        const entry = {
+          foodId:       food.id,
+          _name:        food.name,
+          _servingSize: food.servingSize,
+          _servingUnit: food.servingUnit,
+          quantity:     qty,
+          calories:     Math.round(food.calories * qty),
+          protein:      Math.round(food.protein  * qty),
+          carbs:        Math.round(food.carbs    * qty),
+          fats:         Math.round(food.fats     * qty),
+        };
+        overlay.style.display = 'none';
+        onSelect(entry);
+      });
+    }
+
+    renderPicker();
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     FOOD LIBRARY (Customize tab)
+  ══════════════════════════════════════════════════════════════ */
+  function renderFoodLibrary() {
+    const el = document.getElementById('foodLibrarySection');
+    if (!el) return;
+    const CATS = ['All','Proteins','Vegetables','Fruits','Grains & Breads','Dairy','Fats & Oils','Condiments','Snacks','Beverages'];
+    const foods = filterFoods(foodLibFilter.query, foodLibFilter.category, foodLibFilter.type);
+
+    el.innerHTML = `
+      <div class="section-label" style="margin-bottom:4px">Food Library</div>
+      <div style="font-size:11.5px;color:var(--muted);margin-bottom:12px">Browse ingredients used in Meal Builder.</div>
+      <div class="food-lib-filter-pills" id="flCatPills">
+        ${CATS.map(c=>`<button class="food-lib-pill${c===foodLibFilter.category?' active':''}" data-cat="${c}">${c}</button>`).join('')}
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <input id="flSearch" type="text" class="form-input" placeholder="Search foods…" value="${foodLibFilter.query}" style="flex:1;margin:0">
+        <select id="flType" class="form-input" style="width:auto;padding:6px 10px;margin:0">
+          <option value="all"${foodLibFilter.type==='all'?' selected':''}>All</option>
+          <option value="whole"${foodLibFilter.type==='whole'?' selected':''}>Whole</option>
+          <option value="brand"${foodLibFilter.type==='brand'?' selected':''}>Brand</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+        ${foods.slice(0,40).map(f=>`
+          <div class="food-item-card">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:4px">
+              <div class="food-item-card-name">${f.name}</div>
+              <span class="food-type-badge food-type-${f.type}">${f.type}</span>
+            </div>
+            ${f.brand?`<div class="food-item-card-sub">${f.brand}</div>`:''}
+            <div class="food-item-card-sub">${f.servingSize}${f.servingUnit}</div>
+            <div class="food-item-card-macros">
+              <span class="mm mm-cal">${f.calories}kcal</span>
+              <span class="mm mm-p">${f.protein}P</span>
+              <span class="mm mm-c">${f.carbs}C</span>
+              <span class="mm mm-f">${f.fats}F</span>
+            </div>
+            ${f.createdAt?`<button class="meal-delete-btn" data-fid="${f.id}" style="align-self:flex-end;margin-top:2px">× Remove</button>`:''}
+          </div>`).join('')}
+      </div>
+      ${foods.length>40?`<div style="text-align:center;font-size:12px;color:var(--muted);margin-bottom:10px">Showing 40 of ${foods.length} — refine search to narrow results</div>`:''}
+      <button id="flAddCustomBtn" class="day-tab" style="width:100%;padding:8px;font-size:12px">+ Add Custom Food</button>
+    `;
+
+    el.querySelector('#flSearch').addEventListener('input', e => { foodLibFilter.query = e.target.value; renderFoodLibrary(); });
+    el.querySelector('#flType').addEventListener('change', e => { foodLibFilter.type = e.target.value; renderFoodLibrary(); });
+    el.querySelectorAll('#flCatPills .food-lib-pill').forEach(btn => {
+      btn.addEventListener('click', () => { foodLibFilter.category = btn.dataset.cat; renderFoodLibrary(); });
+    });
+    el.querySelectorAll('[data-fid]').forEach(btn => {
+      btn.addEventListener('click', e => { e.stopPropagation(); STATE.removeFoodItem(btn.dataset.fid); renderFoodLibrary(); });
+    });
+    el.querySelector('#flAddCustomBtn').addEventListener('click', () => openAddFoodModal());
+  }
+
+  function openAddFoodModal() {
+    const overlay = document.getElementById('addFoodOverlay');
+    if (!overlay) return;
+    overlay.style.display = 'flex';
+    document.getElementById('addFoodForm').reset();
+  }
+  function closeAddFoodModal() {
+    const overlay = document.getElementById('addFoodOverlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     MEAL BUILDER (Customize tab)
+  ══════════════════════════════════════════════════════════════ */
+  function renderMealBuilder() {
+    const el = document.getElementById('mealBuilderSection');
+    if (!el) return;
+    const totals = computeMealTotals(builderMeal.ingredients);
+    const SLOTS  = ['breakfast','lunch','dinner','snack'];
+
+    el.innerHTML = `
+      <div class="section-label" style="margin-bottom:4px">Meal Builder</div>
+      <div style="font-size:11.5px;color:var(--muted);margin-bottom:12px">Build named meals from your food library.</div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-body" style="padding:14px 16px">
+          <input id="mbName" type="text" class="form-input" placeholder="Meal name (e.g. Chicken Rice Bowl)" value="${builderMeal.name||''}" style="margin-bottom:12px">
+          <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:8px;letter-spacing:0.5px;text-transform:uppercase">Meal Slots</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+            ${SLOTS.map(s=>`
+              <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px">
+                <input type="checkbox" data-slot="${s}" ${builderMeal.slots.includes(s)?'checked':''} style="accent-color:var(--accent)">
+                ${s.charAt(0).toUpperCase()+s.slice(1)}
+              </label>`).join('')}
+          </div>
+          <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:8px;letter-spacing:0.5px;text-transform:uppercase">Ingredients</div>
+          <div id="mbIngredients">
+            ${builderMeal.ingredients.length===0
+              ? `<div style="text-align:center;color:var(--muted);padding:14px 0;font-size:12px">No ingredients yet — tap Add Ingredient</div>`
+              : builderMeal.ingredients.map((ing,i)=>`
+                <div class="builder-ingredient-row">
+                  <div class="builder-ingredient-name">${ing._name}</div>
+                  <div style="font-size:10.5px;color:var(--muted);white-space:nowrap">${ing.calories}kcal</div>
+                  <input class="builder-qty-input" type="number" min="0.5" step="0.5" value="${ing.quantity}" data-ing="${i}">
+                  <button class="builder-remove-btn" data-remove="${i}">×</button>
+                </div>`).join('')}
+          </div>
+          <button id="mbAddIngredient" class="day-tab" style="width:100%;padding:8px;font-size:12px;margin-top:8px">+ Add Ingredient</button>
+          ${builderMeal.ingredients.length>0?`
+          <div class="builder-macro-bar">
+            <div class="builder-macro-item"><div class="builder-macro-val" style="color:var(--accent3)">${Math.round(totals.calories)}</div><div class="builder-macro-lbl">kcal</div></div>
+            <div class="builder-macro-item"><div class="builder-macro-val" style="color:#f5a623">${Math.round(totals.protein)}g</div><div class="builder-macro-lbl">protein</div></div>
+            <div class="builder-macro-item"><div class="builder-macro-val" style="color:#42c4f5">${Math.round(totals.carbs)}g</div><div class="builder-macro-lbl">carbs</div></div>
+            <div class="builder-macro-item"><div class="builder-macro-val" style="color:#c97bff">${Math.round(totals.fats)}g</div><div class="builder-macro-lbl">fats</div></div>
+          </div>`:''}
+          <button id="mbSave" class="phase-btn active" style="width:100%;padding:11px;font-size:14px;margin-top:12px">${builderMeal.id?'Update Meal':'Save Meal'} ✓</button>
+          ${builderMeal.id?`<button id="mbCancelEdit" style="width:100%;padding:8px;margin-top:6px;background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer">Cancel Edit</button>`:''}
+        </div>
+      </div>
+      <div class="section-label" style="margin-bottom:8px">Saved Meals</div>
+      <div id="userMealsList">
+        ${(STATE.data.nutrition.userMeals||[]).length===0
+          ? `<div style="text-align:center;color:var(--muted);padding:14px 0;font-size:12px">No saved meals yet</div>`
+          : (STATE.data.nutrition.userMeals||[]).map(m=>`
+            <div class="user-meal-card">
+              <div class="user-meal-card-body">
+                <div class="user-meal-card-name">${m.name}</div>
+                <div class="user-meal-card-slots">
+                  ${(m.slots||[]).map(s=>`<span class="slot-badge">${s}</span>`).join('')}
+                </div>
+                <div class="food-item-card-macros">
+                  <span class="mm mm-cal">${m.totalCalories||0}kcal</span>
+                  <span class="mm mm-p">${m.totalProtein||0}P</span>
+                  <span class="mm mm-c">${m.totalCarbs||0}C</span>
+                  <span class="mm mm-f">${m.totalFats||0}F</span>
+                </div>
+              </div>
+              <div class="user-meal-card-actions">
+                <button class="day-tab" data-edit="${m.id}" style="padding:4px 10px;font-size:11px">Edit</button>
+                <button class="meal-delete-btn" data-del="${m.id}" style="font-size:18px">×</button>
+              </div>
+            </div>`).join('')}
+      </div>
+    `;
+
+    el.querySelector('#mbName').addEventListener('input', e => { builderMeal.name = e.target.value; });
+
+    el.querySelectorAll('[data-slot]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const slot = cb.dataset.slot;
+        if (cb.checked) { if (!builderMeal.slots.includes(slot)) builderMeal.slots.push(slot); }
+        else { builderMeal.slots = builderMeal.slots.filter(s=>s!==slot); }
+      });
+    });
+
+    el.querySelectorAll('.builder-qty-input').forEach(inp => {
+      inp.addEventListener('change', () => {
+        const i    = parseInt(inp.dataset.ing);
+        const food = getAllFoods().find(f => f.id === builderMeal.ingredients[i].foodId);
+        const qty  = parseFloat(inp.value) || 1;
+        if (food) {
+          builderMeal.ingredients[i].quantity = qty;
+          builderMeal.ingredients[i].calories = Math.round(food.calories * qty);
+          builderMeal.ingredients[i].protein  = Math.round(food.protein  * qty);
+          builderMeal.ingredients[i].carbs    = Math.round(food.carbs    * qty);
+          builderMeal.ingredients[i].fats     = Math.round(food.fats     * qty);
+        }
+        renderMealBuilder();
+      });
+    });
+
+    el.querySelectorAll('[data-remove]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        builderMeal.ingredients.splice(parseInt(btn.dataset.remove), 1);
+        renderMealBuilder();
+      });
+    });
+
+    el.querySelector('#mbAddIngredient').addEventListener('click', () => {
+      openFoodPicker(entry => {
+        builderMeal.ingredients.push(entry);
+        renderMealBuilder();
+      });
+    });
+
+    el.querySelector('#mbSave').addEventListener('click', () => {
+      const name = (el.querySelector('#mbName').value || builderMeal.name || '').trim();
+      if (!name) { alert('Please enter a meal name.'); return; }
+      if (builderMeal.ingredients.length === 0) { alert('Please add at least one ingredient.'); return; }
+      const totals = computeMealTotals(builderMeal.ingredients);
+      const meal = {
+        ...builderMeal,
+        name,
+        totalCalories: Math.round(totals.calories),
+        totalProtein:  Math.round(totals.protein),
+        totalCarbs:    Math.round(totals.carbs),
+        totalFats:     Math.round(totals.fats),
+      };
+      STATE.saveUserMeal(meal);
+      builderMeal = { name:'', slots:[], ingredients:[] };
+      renderMealBuilder();
+    });
+
+    const cancelBtn = el.querySelector('#mbCancelEdit');
+    if (cancelBtn) cancelBtn.addEventListener('click', () => { builderMeal = { name:'', slots:[], ingredients:[] }; renderMealBuilder(); });
+
+    el.querySelectorAll('[data-edit]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const meal = (STATE.data.nutrition.userMeals||[]).find(m=>m.id===btn.dataset.edit);
+        if (meal) { builderMeal = { ...meal, ingredients: [...meal.ingredients] }; renderMealBuilder(); }
+      });
+    });
+
+    el.querySelectorAll('[data-del]').forEach(btn => {
+      btn.addEventListener('click', () => { STATE.removeUserMeal(btn.dataset.del); renderMealBuilder(); });
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     USER MEAL PICKER (assign to plan slot)
+  ══════════════════════════════════════════════════════════════ */
+  function openUserMealPicker(slotIdx) {
+    const SLOT_KEYS = ['breakfast','lunch','dinner','snack'];
+    const slotKey   = SLOT_KEYS[slotIdx];
+    const today     = new Date().toISOString().slice(0,10);
+    const meals     = (STATE.data.nutrition.userMeals||[]).filter(m => !m.slots || m.slots.length===0 || m.slots.includes(slotKey));
+
+    let overlay = document.getElementById('userMealPickerOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'userMealPickerOverlay';
+      overlay.className = 'food-picker-overlay';
+      document.body.appendChild(overlay);
+    }
+
+    overlay.innerHTML = `
+      <div class="food-picker-sheet">
+        <div class="food-picker-header">
+          <span style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700">Assign to ${slotKey.charAt(0).toUpperCase()+slotKey.slice(1)}</span>
+          <button id="umpClose" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px">×</button>
+        </div>
+        <div class="food-picker-body">
+          ${meals.length===0
+            ? `<div style="text-align:center;color:var(--muted);padding:30px 0;font-size:13px">No saved meals yet.<br>Build meals in the Customize tab.</div>`
+            : meals.map(m=>`
+              <div class="food-picker-row" data-meal="${m.id}" style="flex-direction:column;align-items:flex-start;gap:4px">
+                <div style="font-weight:600;font-size:13px">${m.name}</div>
+                <div style="display:flex;gap:5px">
+                  <span class="mm mm-cal">${m.totalCalories}kcal</span>
+                  <span class="mm mm-p">${m.totalProtein}P</span>
+                  <span class="mm mm-c">${m.totalCarbs}C</span>
+                  <span class="mm mm-f">${m.totalFats}F</span>
+                </div>
+              </div>`).join('')}
+        </div>
+      </div>`;
+
+    overlay.style.display = 'flex';
+    overlay.querySelector('#umpClose').addEventListener('click', () => { overlay.style.display='none'; });
+    overlay.addEventListener('click', e => { if(e.target===overlay) overlay.style.display='none'; });
+    overlay.querySelectorAll('[data-meal]').forEach(row => {
+      row.addEventListener('click', () => {
+        STATE.assignMealToSlot(today, slotKey, row.dataset.meal);
+        overlay.style.display = 'none';
+        renderPhase();
+      });
+    });
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -782,4 +1253,6 @@ window.registerPage('nutrition', function initNutrition() {
   document.getElementById('nutritionPrinciplesPlan').innerHTML = principleHTML;
 
   renderPhase();
+  renderMealBuilder();
+  renderFoodLibrary();
 });

@@ -275,6 +275,83 @@
         </div>
       </div>
 
+      <!-- Add Custom Meal modal -->
+      <div class="ex-modal-overlay" id="addMealOverlay">
+        <div class="ex-modal">
+          <div class="modal-drag-handle"></div>
+          <div class="ex-modal-header">
+            <div class="ex-modal-info">
+              <div class="ex-modal-eyebrow" id="addMealEyebrow"></div>
+              <div class="ex-modal-title">Log Custom Meal</div>
+            </div>
+            <button class="modal-close" id="addMealClose">✕</button>
+          </div>
+          <div class="ex-modal-body" id="addMealBody"></div>
+        </div>
+      </div>
+
+      <!-- Add Custom Food modal -->
+      <div id="addFoodOverlay" class="ex-modal-overlay" style="display:none">
+        <div class="ex-modal" style="max-width:480px">
+          <div class="ex-modal-header">
+            <span class="ex-modal-title">Add Food to Library</span>
+            <button id="addFoodClose" class="modal-close">×</button>
+          </div>
+          <div class="ex-modal-body">
+            <form id="addFoodForm">
+              <div style="margin-bottom:10px">
+                <label class="form-label">Food Name</label>
+                <input id="afName" type="text" class="form-input" placeholder="e.g. Chicken Breast" required>
+              </div>
+              <div style="margin-bottom:10px">
+                <label class="form-label">Brand (optional)</label>
+                <input id="afBrand" type="text" class="form-input" placeholder="e.g. Quest">
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+                <div>
+                  <label class="form-label">Category</label>
+                  <select id="afCategory" class="form-input">
+                    <option>Proteins</option><option>Vegetables</option><option>Fruits</option>
+                    <option>Grains &amp; Breads</option><option>Dairy</option>
+                    <option>Fats &amp; Oils</option><option>Condiments</option>
+                    <option>Snacks</option><option>Beverages</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="form-label">Type</label>
+                  <select id="afType" class="form-input">
+                    <option value="whole">Whole Food</option>
+                    <option value="brand">Brand / Prepared</option>
+                  </select>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+                <div>
+                  <label class="form-label">Serving Size</label>
+                  <input id="afServingSize" type="number" class="form-input" placeholder="100" min="0" step="any" required>
+                </div>
+                <div>
+                  <label class="form-label">Unit</label>
+                  <select id="afServingUnit" class="form-input">
+                    <option value="g">g</option><option value="oz">oz</option>
+                    <option value="ml">ml</option><option value="cup">cup</option>
+                    <option value="piece">piece</option><option value="tbsp">tbsp</option>
+                  </select>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+                <div><label class="form-label">Calories</label><input id="afCalories" type="number" class="form-input" placeholder="0" min="0"></div>
+                <div><label class="form-label">Protein (g)</label><input id="afProtein" type="number" class="form-input" placeholder="0" min="0" step="any"></div>
+                <div><label class="form-label">Carbs (g)</label><input id="afCarbs" type="number" class="form-input" placeholder="0" min="0" step="any"></div>
+                <div><label class="form-label">Fats (g)</label><input id="afFats" type="number" class="form-input" placeholder="0" min="0" step="any"></div>
+                <div><label class="form-label">Fiber (g)</label><input id="afFiber" type="number" class="form-input" placeholder="0" min="0" step="any"></div>
+              </div>
+              <button type="submit" class="phase-btn active" style="width:100%;padding:11px;font-size:14px;margin-top:4px">Save to Library</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
       <div class="page-inner" id="nutrition-inner"></div>
     </section>
 

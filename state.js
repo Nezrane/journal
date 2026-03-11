@@ -189,6 +189,9 @@ function _defaultState() {
       startBodyFat:    0,
       currentBodyFat:  0,
       goalBodyFat:     0,
+      foodLibrary:    [],
+      userMeals:      [],
+      mealPlan:       {},
     },
 
     /* ── Passions ──
@@ -259,6 +262,9 @@ window.STATE = {
       if (nt.startBodyFat    === undefined) nt.startBodyFat    = 0;
       if (nt.currentBodyFat  === undefined) nt.currentBodyFat  = 0;
       if (nt.goalBodyFat     === undefined) nt.goalBodyFat     = 0;
+      if (!Array.isArray(nt.foodLibrary)) nt.foodLibrary = [];
+      if (!Array.isArray(nt.userMeals))   nt.userMeals   = [];
+      if (typeof nt.mealPlan !== 'object' || Array.isArray(nt.mealPlan)) nt.mealPlan = {};
       if (wk.cycleCount  === undefined)    wk.cycleCount   = 0;
       if (wk.weekNumber  === undefined)    wk.weekNumber   = 1;
       /* Migrate old Pull-first schedule to the new Upper-first schedule */
@@ -748,6 +754,58 @@ window.STATE = {
       arr.splice(customIdx, 1);
       this.save();
     }
+  },
+
+  /* ── Food Library ── */
+  addFoodItem(food) {
+    food.id = 'fl_' + Date.now();
+    food.createdAt = new Date().toISOString();
+    this.data.nutrition.foodLibrary.push(food);
+    this.save();
+  },
+  removeFoodItem(id) {
+    const nt = this.data.nutrition;
+    nt.foodLibrary = nt.foodLibrary.filter(f => f.id !== id);
+    this.save();
+  },
+
+  /* ── User Meals ── */
+  saveUserMeal(meal) {
+    const nt = this.data.nutrition;
+    if (meal.id) {
+      const idx = nt.userMeals.findIndex(m => m.id === meal.id);
+      if (idx !== -1) { nt.userMeals[idx] = meal; }
+      else { nt.userMeals.push(meal); }
+    } else {
+      meal.id = 'um_' + Date.now();
+      meal.createdAt = new Date().toISOString();
+      nt.userMeals.push(meal);
+    }
+    this.save();
+  },
+  removeUserMeal(id) {
+    const nt = this.data.nutrition;
+    nt.userMeals = nt.userMeals.filter(m => m.id !== id);
+    /* clear from any mealPlan slots */
+    Object.values(nt.mealPlan).forEach(day => {
+      ['breakfast','lunch','dinner','snack'].forEach(slot => {
+        if (day[slot] === id) day[slot] = null;
+      });
+    });
+    this.save();
+  },
+
+  /* ── Meal Plan ── */
+  assignMealToSlot(date, slot, mealId) {
+    const nt = this.data.nutrition;
+    if (!nt.mealPlan[date]) nt.mealPlan[date] = { breakfast:null, lunch:null, dinner:null, snack:null };
+    nt.mealPlan[date][slot] = mealId;
+    this.save();
+  },
+  clearMealSlot(date, slot) {
+    const nt = this.data.nutrition;
+    if (nt.mealPlan[date]) nt.mealPlan[date][slot] = null;
+    this.save();
   },
 
   /* ── Private helpers ── */
