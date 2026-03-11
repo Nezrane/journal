@@ -2739,6 +2739,7 @@ select.form-input option { background: #141920; color: var(--text); }
   display: flex;
   flex-direction: column;
   gap: 6px;
+  padding-bottom: 10px;
 }
 
 .macro-summary-header {

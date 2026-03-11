@@ -92,6 +92,7 @@ window.registerPage('nutrition', function initNutrition() {
   }
 
   let currentPhase  = ns.calcGoal || ns.currentPhase || 'maintain';
+  let viewDate      = new Date().toISOString().slice(0, 10);
 
   let activeTab = 'plan';
   let builderMeal = { name:'', slots:[], ingredients:[] };
@@ -114,12 +115,19 @@ window.registerPage('nutrition', function initNutrition() {
 
       <!-- Phase + macro progress -->
       <div class="card" id="mealPlanProgress" style="margin-bottom:14px;overflow:hidden">
-        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-          <div>
-            <div class="card-title" style="flex-shrink:0">Daily Macro Summary</div>
+        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <div style="flex-shrink:0">
+            <div class="card-title">Daily Macro Summary</div>
             <div id="planPhaseLabel" style="font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-top:2px"></div>
           </div>
-          <div class="match-badge" id="matchBadge" style="flex-shrink:0">— No meals yet</div>
+          <div style="display:flex;align-items:center;gap:6px;flex:1;justify-content:center">
+            <button id="prevDayBtn" style="background:none;border:1px solid var(--border);color:var(--muted);font-size:14px;line-height:1;padding:2px 9px;border-radius:6px;cursor:pointer">‹</button>
+            <span id="summaryDateLabel" style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;letter-spacing:0.5px;color:var(--text);white-space:nowrap;min-width:110px;text-align:center"></span>
+            <button id="nextDayBtn" style="background:none;border:1px solid var(--border);color:var(--muted);font-size:14px;line-height:1;padding:2px 9px;border-radius:6px;cursor:pointer">›</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+            <button id="clearTodayBtn" style="background:none;border:1px solid var(--border);color:var(--muted);font-size:10px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:0.5px;padding:3px 8px;border-radius:6px;cursor:pointer;text-transform:uppercase">Clear Day</button>
+          </div>
         </div>
         <div class="card-body" style="padding:12px 16px">
           <div class="macro-summary-grid" id="macroSummaryGrid"></div>
@@ -200,13 +208,12 @@ window.registerPage('nutrition', function initNutrition() {
         </div>
 
         <!-- Live macro totals -->
-        <div style="border-top:1px solid var(--border);padding:14px 20px 0">
-          <div style="font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Daily Targets</div>
+        <div style="padding:14px 20px 0">
           <div class="macro-calc-results" id="ntCalcResults"></div>
         </div>
 
         <!-- Meal distribution sliders -->
-        <div style="border-top:1px solid var(--border);padding:14px 20px 16px" id="macroDistributionSection"></div>
+        <div style="border-top:1px solid var(--border);padding:20px 20px 16px;margin-top:6px" id="macroDistributionSection"></div>
       </div>
 
       <!-- Slot Meal Options -->
@@ -267,7 +274,7 @@ window.registerPage('nutrition', function initNutrition() {
     if (!grid) return;
     grid.innerHTML = '';
 
-    const today      = new Date().toISOString().slice(0, 10);
+    const today      = viewDate;
     const plan       = STATE.data.nutrition.mealPlan[today] || {};
     const SLOT_KEYS  = ['breakfast', 'lunch', 'dinner', 'snack'];
     const collection = getUnifiedMealCollection();
@@ -285,7 +292,7 @@ window.registerPage('nutrition', function initNutrition() {
       const card = document.createElement('div');
       card.className = 'meal-card';
       card.innerHTML = `
-        <div class="meal-card-header" style="display:flex;align-items:center;justify-content:space-between">
+        <div class="meal-card-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
           <div>
             <div class="meal-card-number">Slot ${mi + 1}</div>
             <div class="meal-card-title">${title}</div>
@@ -296,12 +303,15 @@ window.registerPage('nutrition', function initNutrition() {
               <span class="mm mm-f">${tgt.fats}g F</span>
             </div>
           </div>
-          ${selectedId ? `<span style="font-size:10px;color:var(--accent);font-family:'Rajdhani',sans-serif;font-weight:700">Selected ✓</span>` : ''}
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
+            ${selectedId ? `<span style="font-size:10px;color:var(--accent);font-family:'Rajdhani',sans-serif;font-weight:700">Selected ✓</span>` : ''}
+            <button class="slot-quick-add-btn" data-slot-key="${slotKey}" style="background:none;border:1px dashed var(--border);border-radius:7px;color:var(--muted);font-size:11px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-weight:600;letter-spacing:0.4px;padding:4px 9px;white-space:nowrap">+ Quick Add</button>
+          </div>
         </div>
         <div class="meal-options-scroll" id="slot-scroll-${mi}"></div>
         ${options.length === 0 ? `<div style="padding:4px 14px 8px;font-size:12px;color:var(--muted)">No options — add meals in Customize tab.</div>` : ''}
         ${quickAdds.length > 0 ? `
-        <div style="padding:6px 14px 0;border-top:1px solid var(--border);margin-top:4px">
+        <div style="padding:6px 14px 8px;border-top:1px solid var(--border);margin-top:4px">
           ${quickAdds.map((qa) => {
             const realIdx = (plan.quickAdds || []).indexOf(qa);
             return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0">
@@ -313,9 +323,6 @@ window.registerPage('nutrition', function initNutrition() {
             </div>`;
           }).join('')}
         </div>` : ''}
-        <div style="padding:8px 14px 12px;${quickAdds.length > 0 ? 'padding-top:4px;' : ''}">
-          <button class="slot-quick-add-btn" data-slot-key="${slotKey}" style="width:100%;padding:7px;background:none;border:1px dashed var(--border);border-radius:8px;color:var(--muted);font-size:12px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-weight:600;letter-spacing:0.5px">+ Quick Add Food</button>
-        </div>
       `;
       grid.appendChild(card);
 
@@ -542,7 +549,7 @@ window.registerPage('nutrition', function initNutrition() {
      Shown at the top of the page (always visible).
   ══════════════════════════════════════════════════════════════ */
   function updateSummary() {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = viewDate;
     const plan  = STATE.data.nutrition.mealPlan[today] || {};
     const collection = getUnifiedMealCollection();
     const totals = { calories: 0, protein: 0, carbs: 0, fats: 0 };
@@ -578,14 +585,6 @@ window.registerPage('nutrition', function initNutrition() {
     const grid = document.getElementById('macroSummaryGrid');
     if (!grid) return;
 
-    /* When nothing is logged, show an empty-state prompt instead of grey empty bars */
-    if (cal === 0 && pro === 0 && carb === 0 && fat === 0) {
-      grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:18px 0;font-size:12px;color:var(--muted)">Select meals or quick-add a food below to track today's macros.</div>`;
-      const badge = document.getElementById('matchBadge');
-      if (badge) { badge.className = 'match-badge'; badge.innerHTML = '— No meals yet'; }
-      return;
-    }
-
     const macros = [
       { label:'Calories', eaten:cal,  target:targets.calories, unit:'kcal', color:'var(--accent3)' },
       { label:'Protein',  eaten:pro,  target:targets.protein,  unit:'g',    color:'#f5a623' },
@@ -594,38 +593,32 @@ window.registerPage('nutrition', function initNutrition() {
     ];
 
     grid.innerHTML = macros.map(m => {
-      const pct  = m.target > 0 ? Math.min(100, (m.eaten / m.target) * 100) : 0;
-      const over = m.eaten > m.target;
+      const rawPct  = m.target > 0 ? (m.eaten / m.target) * 100 : 0;
+      const over    = m.eaten > m.target;
+      const fillPct = over ? 100 : rawPct;
+      /* Overflow segment: how far past 100% (capped at 40% of track for visual) */
+      const overPct = over ? Math.min(40, rawPct - 100) : 0;
+      const valColor = over ? 'var(--danger)' : m.color;
       return `
         <div class="macro-summary-item">
           <div class="macro-summary-header">
             <span class="macro-summary-label">${m.label}</span>
             <span class="macro-summary-values">
-              <span style="color:${m.color};font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700">${m.eaten}</span>
+              <span style="color:${valColor};font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700">${m.eaten}</span>
               <span class="macro-summary-sep">/</span>
               <span class="macro-summary-target">${m.target}${m.unit}</span>
             </span>
           </div>
-          <div class="macro-bar-track">
-            <div class="macro-bar-fill" style="width:${pct}%;background:${m.color};${over ? 'opacity:1' : ''}"></div>
+          <div class="macro-bar-track" style="position:relative;overflow:hidden">
+            <div class="macro-bar-fill" style="width:${fillPct}%;background:${m.color}"></div>
+            ${over ? `<div style="position:absolute;top:0;right:0;height:100%;width:${overPct}%;background:var(--danger);border-radius:0 4px 4px 0;opacity:0.85"></div>` : ''}
           </div>
-          <div class="macro-summary-sub">${Math.round(pct)}% of daily target</div>
+          <div class="macro-summary-sub" style="color:${over ? 'var(--danger)' : ''}">
+            ${over ? `+${Math.round(m.eaten - m.target)}${m.unit} over` : `${Math.round(rawPct)}% of daily target`}
+          </div>
         </div>`;
     }).join('');
 
-    /* Match badge — always update */
-    const badge = document.getElementById('matchBadge');
-    if (badge) {
-      badge.className = 'match-badge';
-      const diff = cal - targets.calories;
-      if (Math.abs(diff) <= 50) {
-        badge.classList.add('perfect');
-        badge.innerHTML = `<div class="checkmark"><svg viewBox="0 0 8 8" fill="none"><polyline points="1,4 3,6 7,2" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg></div> On target ✓`;
-      } else {
-        badge.classList.add('mismatch');
-        badge.innerHTML = `&#9888; ${diff > 0 ? '+' : ''}${diff} kcal`;
-      }
-    }
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -693,8 +686,7 @@ window.registerPage('nutrition', function initNutrition() {
       const carbs    = parseFloat(document.getElementById('qaCarbs').value)    || 0;
       const fats     = parseFloat(document.getElementById('qaFats').value)     || 0;
       if (!calories && !protein && !carbs && !fats) return;
-      const today = new Date().toISOString().slice(0, 10);
-      STATE.addQuickAdd(today, slotKey, { name, calories, protein, carbs, fats });
+      STATE.addQuickAdd(viewDate, slotKey, { name, calories, protein, carbs, fats });
       overlay.style.display = 'none';
       renderPhase();
     });
@@ -1042,7 +1034,7 @@ window.registerPage('nutrition', function initNutrition() {
   function openMealCollectionPicker(slotIdx, onPick) {
     const SLOT_KEYS = ['breakfast', 'lunch', 'dinner', 'snack'];
     const slotKey   = SLOT_KEYS[slotIdx];
-    const today     = new Date().toISOString().slice(0, 10);
+    const today     = viewDate;
     let pickerQuery = '';
 
     let overlay = document.getElementById('mealCollectionPickerOverlay');
@@ -1174,7 +1166,11 @@ window.registerPage('nutrition', function initNutrition() {
     const fPct = Math.round((m.fats    * 9 / m.calories) * 100);
     const adj  = ntCalcGoal === 'bulk' ? '+300 surplus' : ntCalcGoal === 'cut' ? '−500 deficit' : 'maintenance';
     inner.querySelector('#ntCalcResults').innerHTML = `
-      <div class="macro-calc-breakdown" style="grid-template-columns:1fr 1fr 1fr 1fr;margin-bottom:10px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Daily Targets</div>
+        <div style="font-size:10px;color:var(--muted)">TDEE ${m.tdee.toLocaleString()} kcal · ${adj} · BMI ${calcBMI(ntCalcWeight, ntCalcHeight).toFixed(1)}</div>
+      </div>
+      <div class="macro-calc-breakdown" style="grid-template-columns:1fr 1fr 1fr 1fr">
         <div class="macro-calc-macro" style="--mc:100%;--col:var(--accent3)">
           <div class="macro-calc-bar"><div class="macro-calc-bar-fill"></div></div>
           <div class="macro-calc-val" style="color:var(--accent3)">${m.calories.toLocaleString()}</div>
@@ -1195,8 +1191,7 @@ window.registerPage('nutrition', function initNutrition() {
           <div class="macro-calc-val">${m.fats}g</div>
           <div class="macro-calc-lbl">Fats (${fPct}%)</div>
         </div>
-      </div>
-      <div style="font-size:10px;color:var(--muted);line-height:1.5">TDEE ${m.tdee.toLocaleString()} kcal · ${adj} · BMI ${calcBMI(ntCalcWeight, ntCalcHeight).toFixed(1)}</div>`;
+      </div>`;
   }
 
   function ntSaveAndRender() {
@@ -1251,4 +1246,67 @@ window.registerPage('nutrition', function initNutrition() {
   renderSlotCustomizer();
   renderMealBuilder();
   renderFoodLibrary();
+
+  /* ── Date navigation ── */
+  function todayStr() { return new Date().toISOString().slice(0, 10); }
+
+  function offsetDate(base, days) {
+    const d = new Date(base + 'T00:00:00');
+    d.setDate(d.getDate() + days);
+    return d.toISOString().slice(0, 10);
+  }
+
+  function updateDateNav() {
+    const t     = todayStr();
+    const min   = offsetDate(t, -28);
+    const max   = offsetDate(t, 14);
+    const label = document.getElementById('summaryDateLabel');
+    const prev  = document.getElementById('prevDayBtn');
+    const next  = document.getElementById('nextDayBtn');
+    if (label) {
+      const d = new Date(viewDate + 'T00:00:00');
+      const dayPart  = viewDate === t ? 'Today' : d.toLocaleDateString('en-US', { weekday: 'short' });
+      const datePart = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      label.textContent = `${dayPart} · ${datePart}`;
+    }
+    if (prev) prev.disabled = viewDate <= min;
+    if (next) next.disabled = viewDate >= max;
+  }
+
+  const prevBtn = document.getElementById('prevDayBtn');
+  const nextBtn = document.getElementById('nextDayBtn');
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      viewDate = offsetDate(viewDate, -1);
+      updateDateNav();
+      renderPhase();
+    });
+  }
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      viewDate = offsetDate(viewDate, 1);
+      updateDateNav();
+      renderPhase();
+    });
+  }
+
+  /* Clear Day button */
+  const clearBtn = document.getElementById('clearTodayBtn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      STATE.clearTodayPlan(viewDate);
+      renderPhase();
+    });
+  }
+
+  /* Prune mealPlan entries older than 28 days */
+  (function pruneMealPlanHistory() {
+    const cutoff = offsetDate(todayStr(), -28);
+    const mp = STATE.data.nutrition.mealPlan;
+    let pruned = false;
+    Object.keys(mp).forEach(k => { if (k < cutoff) { delete mp[k]; pruned = true; } });
+    if (pruned) STATE.save();
+  }());
+
+  updateDateNav();
 });

@@ -102,6 +102,8 @@ function _defaultState() {
       weeklyPriorityDate:   null,
       todayPriorities:      ['', '', ''],
       todayPrioritiesDate:  null,
+      tasks:                [],
+      customHabits:         null,
     },
 
     /* ── Business ──
@@ -249,6 +251,8 @@ window.STATE = {
       if (!this.data.dashboard.weeklyTopPriority) {
         this.data.dashboard.weeklyTopPriority = '';
       }
+      if (!Array.isArray(this.data.dashboard.tasks)) this.data.dashboard.tasks = [];
+      if (this.data.dashboard.customHabits === undefined) this.data.dashboard.customHabits = null;
       const wk = this.data.workout;
       if (!Array.isArray(wk.logbook))      wk.logbook      = [];
       if (!Array.isArray(wk.progressPics)) wk.progressPics = [];
@@ -350,6 +354,24 @@ window.STATE = {
   setTodayPriorities(p1, p2, p3) {
     this.data.dashboard.todayPriorities     = [p1, p2, p3];
     this.data.dashboard.todayPrioritiesDate = new Date().toISOString();
+    this.save();
+  },
+
+  addTask(text) {
+    if (!Array.isArray(this.data.dashboard.tasks)) this.data.dashboard.tasks = [];
+    this.data.dashboard.tasks.push({ id: 't_' + Date.now(), text, done: false, createdAt: new Date().toISOString() });
+    this.save();
+  },
+  toggleTask(id) {
+    const t = (this.data.dashboard.tasks || []).find(t => t.id === id);
+    if (t) { t.done = !t.done; this.save(); }
+  },
+  removeTask(id) {
+    this.data.dashboard.tasks = (this.data.dashboard.tasks || []).filter(t => t.id !== id);
+    this.save();
+  },
+  setDashboardHabits(habits) {
+    this.data.dashboard.customHabits = habits;
     this.save();
   },
 
@@ -822,6 +844,10 @@ window.STATE = {
   removeQuickAdd(date, idx) {
     const day = this.data.nutrition.mealPlan[date];
     if (day?.quickAdds) { day.quickAdds.splice(idx, 1); this.save(); }
+  },
+  clearTodayPlan(date) {
+    this.data.nutrition.mealPlan[date] = { breakfast: null, lunch: null, dinner: null, snack: null, quickAdds: [] };
+    this.save();
   },
 
   setSlotOptions(slotIdx, mealIds) {
