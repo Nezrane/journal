@@ -192,7 +192,8 @@ function _defaultState() {
       foodLibrary:    [],
       userMeals:      [],
       mealPlan:       {},
-      slotOptions:    { 0:[], 1:[], 2:[], 3:[] },
+      slotOptions:      { 0:[], 1:[], 2:[], 3:[] },
+      mealDistribution: [25, 30, 35, 10],
     },
 
     /* ── Passions ──
@@ -268,6 +269,7 @@ window.STATE = {
       if (typeof nt.mealPlan !== 'object' || Array.isArray(nt.mealPlan)) nt.mealPlan = {};
       if (typeof nt.slotOptions !== 'object' || Array.isArray(nt.slotOptions)) nt.slotOptions = { 0:[], 1:[], 2:[], 3:[] };
       [0,1,2,3].forEach(i => { if (!Array.isArray(nt.slotOptions[i])) nt.slotOptions[i] = []; });
+      if (!Array.isArray(nt.mealDistribution) || nt.mealDistribution.length !== 4) nt.mealDistribution = [25, 30, 35, 10];
       if (wk.cycleCount  === undefined)    wk.cycleCount   = 0;
       if (wk.weekNumber  === undefined)    wk.weekNumber   = 1;
       /* Migrate old Pull-first schedule to the new Upper-first schedule */
@@ -813,6 +815,11 @@ window.STATE = {
 
   setSlotOptions(slotIdx, mealIds) {
     this.data.nutrition.slotOptions[slotIdx] = mealIds.slice(0, 15);
+    this.save();
+  },
+
+  setMealDistribution(arr) {
+    this.data.nutrition.mealDistribution = arr.slice(0, 4).map(v => Math.max(0, Math.min(100, v)));
     this.save();
   },
 

@@ -200,6 +200,9 @@ window.registerPage('nutrition', function initNutrition() {
         </div>
       </div>
 
+      <!-- Macro Distribution -->
+      <div id="macroDistributionSection" style="margin-bottom:24px"></div>
+
       <!-- Slot Meal Options -->
       <div id="slotCustomizerSection" style="margin-bottom:24px"></div>
 
@@ -267,12 +270,14 @@ window.registerPage('nutrition', function initNutrition() {
     const SLOT_KEYS  = ['breakfast', 'lunch', 'dinner', 'snack'];
     const collection = getUnifiedMealCollection();
     const slotOpts   = STATE.data.nutrition.slotOptions || { 0:[], 1:[], 2:[], 3:[] };
+    const slotTargets = getSlotTargets();
 
     MEAL_TITLES.forEach((title, mi) => {
       const slotKey    = SLOT_KEYS[mi];
       const optionIds  = slotOpts[mi] || [];
       const options    = optionIds.map(id => collection.find(m => m.id === id)).filter(Boolean);
       const selectedId = plan[slotKey] || null;
+      const tgt        = slotTargets[mi];
 
       const card = document.createElement('div');
       card.className = 'meal-card';
@@ -281,6 +286,12 @@ window.registerPage('nutrition', function initNutrition() {
           <div>
             <div class="meal-card-number">Slot ${mi + 1}</div>
             <div class="meal-card-title">${title}</div>
+            <div style="display:flex;gap:5px;margin-top:4px">
+              <span class="mm mm-cal">${tgt.calories}kcal</span>
+              <span class="mm mm-p">${tgt.protein}g P</span>
+              <span class="mm mm-c">${tgt.carbs}g C</span>
+              <span class="mm mm-f">${tgt.fats}g F</span>
+            </div>
           </div>
           ${selectedId ? `<span style="font-size:10px;color:var(--accent);font-family:'Rajdhani',sans-serif;font-weight:700">Selected ✓</span>` : ''}
         </div>
@@ -343,6 +354,94 @@ window.registerPage('nutrition', function initNutrition() {
     });
 
     updateSummary();
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     MACRO DISTRIBUTION — split daily totals across 4 meal slots
+  ══════════════════════════════════════════════════════════════ */
+  function getSlotTargets() {
+    const dist    = ns.mealDistribution || [25, 30, 35, 10];
+    const targets = computeMacros(ns.calcWeight, ns.calcGoal, ns.calcActivity);
+    const total   = dist.reduce((s, v) => s + v, 0) || 100;
+    return dist.map(pct => ({
+      pct:      Math.round(pct),
+      calories: Math.round(targets.calories * pct / total),
+      protein:  Math.round(targets.protein  * pct / total),
+      carbs:    Math.round(targets.carbs    * pct / total),
+      fats:     Math.round(targets.fats     * pct / total),
+    }));
+  }
+
+  function renderMacroDistribution() {
+    const el = document.getElementById('macroDistributionSection');
+    if (!el) return;
+    const dist    = [...(ns.mealDistribution || [25, 30, 35, 10])];
+    const targets = getSlotTargets();
+    const total   = dist.reduce((s, v) => s + v, 0);
+    const slotColors = ['#42c4f5','#f5a623','var(--accent)','#c97bff'];
+
+    el.innerHTML = `
+      <div class="section-label" style="margin-bottom:4px">Calorie & Macro Distribution</div>
+      <div style="font-size:11.5px;color:var(--muted);margin-bottom:14px">Set how your daily totals split across each meal slot.</div>
+      <div class="card" style="overflow:hidden">
+        <div style="padding:14px 16px 6px">
+          ${MEAL_TITLES.map((title, i) => `
+            <div style="margin-bottom:16px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="width:8px;height:8px;border-radius:50%;background:${slotColors[i]};flex-shrink:0"></div>
+                  <span style="font-size:13px;font-weight:600">${title}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;color:${slotColors[i]}" id="distPct${i}">${dist[i]}%</span>
+                  <span style="font-size:10.5px;color:var(--muted)" id="distKcal${i}">${targets[i].calories}kcal</span>
+                </div>
+              </div>
+              <input type="range" min="0" max="60" step="1" value="${dist[i]}"
+                class="macro-slider" data-dist="${i}"
+                style="accent-color:${slotColors[i]}">
+              <div style="display:flex;gap:6px;margin-top:5px">
+                <span class="mm mm-p">${targets[i].protein}g P</span>
+                <span class="mm mm-c">${targets[i].carbs}g C</span>
+                <span class="mm mm-f">${targets[i].fats}g F</span>
+              </div>
+            </div>`).join('')}
+        </div>
+        <div style="padding:10px 16px 14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:11.5px;color:var(--muted)">Total allocated</span>
+          <span id="distTotal" style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:${total === 100 ? 'var(--accent)' : 'var(--danger)'}">${total}%</span>
+        </div>
+      </div>`;
+
+    el.querySelectorAll('[data-dist]').forEach(slider => {
+      slider.addEventListener('input', () => {
+        const i = parseInt(slider.dataset.dist);
+        dist[i] = parseInt(slider.value);
+        STATE.setMealDistribution(dist);
+        // Update labels live without full re-render
+        const t = getSlotTargets();
+        const tot = dist.reduce((s, v) => s + v, 0);
+        [0,1,2,3].forEach(j => {
+          const pctEl  = el.querySelector(`#distPct${j}`);
+          const kcalEl = el.querySelector(`#distKcal${j}`);
+          if (pctEl)  pctEl.textContent  = `${dist[j]}%`;
+          if (kcalEl) kcalEl.textContent = `${t[j].calories}kcal`;
+          // update macro chips
+          const chips = el.querySelectorAll(`[data-dist="${j}"]`)[0]?.parentElement?.querySelectorAll('.mm');
+          if (chips && chips.length >= 3) {
+            chips[0].textContent = `${t[j].protein}g P`;
+            chips[1].textContent = `${t[j].carbs}g C`;
+            chips[2].textContent = `${t[j].fats}g F`;
+          }
+        });
+        const totalEl = el.querySelector('#distTotal');
+        if (totalEl) {
+          totalEl.textContent = `${tot}%`;
+          totalEl.style.color = tot === 100 ? 'var(--accent)' : 'var(--danger)';
+        }
+        renderPhase();
+      });
+    });
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -1052,6 +1151,7 @@ window.registerPage('nutrition', function initNutrition() {
   document.getElementById('nutritionPrinciplesPlan').innerHTML = principleHTML;
 
   renderPhase();
+  renderMacroDistribution();
   renderSlotCustomizer();
   renderMealBuilder();
   renderFoodLibrary();
